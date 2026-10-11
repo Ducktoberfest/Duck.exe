@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="az" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CleanVision</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            appleBgLight: '#F5F5F7',
+            appleBgDark: '#000000',
+            appleCardDark: '#1C1C1E',
+            appleCardDarkSecondary: '#2C2C2E',
+            appleAccent: '#0071E3',
+            appleSuccess: '#34C759',
+            appleWarning: '#FF9F0A',
+            appleError: '#FF3B30'
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"Inter"', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(150, 150, 150, 0.3);
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(150, 150, 150, 0.5);
+    }
+    #insights-container h1, #insights-container h2, #insights-container h3 {
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    #insights-container h1 { font-size: 1.25rem; }
+    #insights-container h2 { font-size: 1.1rem; }
+    #insights-container h3 { font-size: 0.95rem; }
+    #insights-container ul, #insights-container ol {
+      padding-left: 1.25rem;
+      margin-top: 0.4rem;
+      margin-bottom: 0.4rem;
+      list-style-type: disc;
+    }
+    #insights-container li {
+      margin-bottom: 0.25rem;
+    }
+    #insights-container strong {
+      font-weight: 600;
+    }
+    #insights-container p {
+      margin-bottom: 0.5rem;
+    }
+    #insights-container code {
+      font-family: monospace;
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.375rem;
+      font-size: 0.85em;
+      background: rgba(125, 125, 125, 0.12);
+    }
+  </style>
+</head>
+<body class="min-h-full flex flex-col font-sans antialiased bg-[#F5F5F7] dark:bg-[#000000] text-gray-900 dark:text-gray-100 transition-colors duration-200">
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-[#F5F5F7]/80 dark:bg-black/80 border-b border-black/5 dark:border-white/10 transition-colors duration-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-[#0071E3] flex items-center justify-center text-white shadow-sm flex-shrink-0">
+          <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+            <path d="M12 2C12.5 7 17 11.5 22 12C17 12.5 12.5 17 12 22C11.5 17 7 12.5 2 12C7 11.5 11.5 7 12 2Z"/>
+          </svg>
+        </div>
+        <span class="font-semibold text-lg tracking-tight text-gray-900 dark:text-white">CleanVision</span>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div id="backend-status-pill" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-black/5 dark:bg-white/10 text-gray-700 dark:text-gray-300 border border-black/5 dark:border-white/5">
+          <span id="backend-status-dot" class="w-2 h-2 rounded-full bg-[#FF3B30]"></span>
+          <span id="backend-status-text">Server offline</span>
+        </div>
+
+        <div id="llm-status-badge" class="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400 border border-black/5 dark:border-white/5">
+          <span id="llm-status-text">LLM Offline</span>
+        </div>
+
+        <div class="flex items-center p-0.5 rounded-full bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/5" role="radiogroup" aria-label="Language selection">
+          <button id="lang-btn-az" onclick="setLanguage('az')" class="px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white shadow-sm" aria-checked="true" role="radio">AZ</button>
+          <button id="lang-btn-en" onclick="setLanguage('en')" class="px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" aria-checked="false" role="radio">EN</button>
+        </div>
+
+        <button onclick="toggleTheme()" class="w-8 h-8 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition text-gray-700 dark:text-gray-300 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none" aria-label="Toggle theme">
+          <svg id="theme-icon-sun" class="w-4 h-4 hidden dark:block fill-current" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+          </svg>
+          <svg id="theme-icon-moon" class="w-4 h-4 block dark:hidden fill-current" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+          </svg>
+        </button>
+
+        <div class="relative">
+          <button id="settings-toggle-btn" onclick="toggleSettingsPopover()" class="w-8 h-8 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition text-gray-700 dark:text-gray-300 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none" aria-label="Open settings">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </button>
+
+          <div id="settings-popover" class="hidden absolute right-0 mt-2 w-80 p-4 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/10 dark:border-white/10 shadow-xl z-50 text-sm">
+            <div class="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/10 mb-3">
+              <span id="txt-settings-title" class="font-semibold text-gray-900 dark:text-white">Tənzimləmələr</span>
+              <button onclick="toggleSettingsPopover()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label id="txt-backend-url-label" for="setting-backend-url" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Backend URL</label>
+                <input id="setting-backend-url" type="url" value="http://localhost:8000" class="w-full px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-gray-50 dark:bg-black/30 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-[#0071E3] focus:outline-none">
+              </div>
+              <div class="flex items-center justify-between pt-1">
+                <label id="txt-mock-mode-label" for="setting-mock-mode" class="text-xs font-medium text-gray-600 dark:text-gray-400">Mock rejimi (test məlumatları)</label>
+                <input id="setting-mock-mode" type="checkbox" class="w-4 h-4 rounded text-[#0071E3] focus:ring-[#0071E3]">
+              </div>
+              <div class="pt-2">
+                <button onclick="saveSettings()" id="txt-save-settings-btn" class="w-full py-2 rounded-xl bg-[#0071E3] hover:bg-[#0077ED] text-white text-xs font-semibold transition">Yadda saxla</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8">
+    <div id="error-banner" class="hidden mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-[#FF3B30]/30 text-xs text-red-700 dark:text-red-300">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-[#FF3B30] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <span id="error-message" class="font-medium"></span>
+        </div>
+        <button onclick="dismissError()" class="text-red-500 hover:text-red-700 dark:hover:text-red-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="error-details-box" class="hidden mt-3">
+        <details class="cursor-pointer">
+          <summary id="txt-error-details-summary" class="font-semibold text-red-600 dark:text-red-400">Xəta təfərrüatları</summary>
+          <pre id="error-details-content" class="mt-2 p-3 rounded-xl bg-red-100/50 dark:bg-black/50 text-[11px] font-mono overflow-x-auto whitespace-pre-wrap"></pre>
+        </details>
+      </div>
+    </div>
+
+    <section id="hero-section" class="mb-10 text-center">
+      <div class="max-w-3xl mx-auto space-y-3 mb-8">
+        <h1 id="txt-hero-headline" class="text-3xl sm:text-5xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
+          Məlumatlarınızı saniyələr içində təmizləyin və analiz edin
+        </h1>
+        <p id="txt-hero-subtitle" class="text-base sm:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          Süni intellekt dəstəkli avtomatlaşdırılmış təmizləmə, keyfiyyət profili və interaktiv qrafiklər
+        </p>
+      </div>
+
+      <div class="max-w-2xl mx-auto">
+        <div id="dropzone" class="relative group cursor-pointer p-8 sm:p-12 rounded-3xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1C1C1E] hover:border-[#0071E3] dark:hover:border-[#0071E3] transition-all duration-200 shadow-sm flex flex-col items-center justify-center text-center">
+          <input id="file-input" type="file" accept=".csv,.xlsx,.xls" class="hidden" onchange="handleFileInput(event)">
+          
+          <div id="dropzone-empty-view" class="space-y-4">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-[#0071E3] flex items-center justify-center group-hover:scale-105 transition-transform">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+              </svg>
+            </div>
+            <div>
+              <p id="txt-drop-prompt" class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">Faylı bura sürükləyin və ya seçmək üçün klikləyin</p>
+              <p id="txt-drop-sub" class="text-xs text-gray-500 dark:text-gray-400 mt-1">CSV, XLSX və ya XLS dəstəklənir (Maks. 20 MB)</p>
+            </div>
+          </div>
+
+          <div id="dropzone-file-view" class="hidden w-full max-w-md p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 overflow-hidden text-left">
+              <div class="w-10 h-10 rounded-xl bg-[#0071E3]/10 text-[#0071E3] flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+              </div>
+              <div class="overflow-hidden">
+                <p id="selected-file-name" class="text-sm font-semibold text-gray-900 dark:text-white truncate">data.csv</p>
+                <p id="selected-file-size" class="text-xs text-gray-500 font-mono">0 KB</p>
+              </div>
+            </div>
+            <button onclick="removeSelectedFile(event)" class="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 text-gray-400 hover:text-gray-700 dark:hover:text-white transition" aria-label="Remove file">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-gray-500">
+          <span id="txt-try-demo">Nümunə fayl ilə yoxlayın:</span>
+          <button onclick="selectDemoFile('dirty_sales.csv', 58604)" class="px-3 py-1 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 hover:border-[#0071E3] text-gray-700 dark:text-gray-300 transition shadow-2xs font-medium">dirty_sales.csv</button>
+          <button onclick="selectDemoFile('dirty_customers.xlsx', 12090)" class="px-3 py-1 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 hover:border-[#0071E3] text-gray-700 dark:text-gray-300 transition shadow-2xs font-medium">dirty_customers.xlsx</button>
+          <button onclick="selectDemoFile('dirty_hr.csv', 205)" class="px-3 py-1 rounded-full bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 hover:border-[#0071E3] text-gray-700 dark:text-gray-300 transition shadow-2xs font-medium">dirty_hr.csv</button>
+        </div>
+
+        <div class="mt-6 flex justify-center">
+          <button id="clean-submit-btn" onclick="startAnalysis()" disabled class="px-8 py-3 rounded-full bg-[#0071E3] hover:bg-[#0077ED] disabled:bg-gray-300 dark:disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all duration-150 shadow-md flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none">
+            <span id="txt-clean-btn">Məlumatı təmizlə</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="empty-state-section" class="mb-12">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="p-6 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-2">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-[#0071E3] flex items-center justify-center font-bold text-sm">1</div>
+          <h2 id="txt-step1-title" class="text-base font-semibold text-gray-900 dark:text-white">1. Məlumatı yükləyin</h2>
+          <p id="txt-step1-desc" class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Dağınıq CSV və ya Excel cədvəlinizi birbaşa brauzerdən daxil edin.</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-2">
+          <div class="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-950/40 text-[#34C759] flex items-center justify-center font-bold text-sm">2</div>
+          <h2 id="txt-step2-title" class="text-base font-semibold text-gray-900 dark:text-white">2. Süni intellektlə təmizləyin</h2>
+          <p id="txt-step2-desc" class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Sİ boşluqları, təkrarları, kənar qiymətləri aşkarlayır və həll edir.</p>
+        </div>
+        <div class="p-6 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-2">
+          <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center font-bold text-sm">3</div>
+          <h2 id="txt-step3-title" class="text-base font-semibold text-gray-900 dark:text-white">3. Nəticəni əldə edin</h2>
+          <p id="txt-step3-desc" class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">Təmizlənmiş CSV faylını yükləyin və dinamik analitika hesabatını araşdırın.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="progress-section" class="hidden mb-12 max-w-2xl mx-auto p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-md">
+      <div class="text-center mb-6">
+        <h2 id="stepper-current-label" class="text-lg font-bold text-gray-900 dark:text-white">Məlumatlar oxunur...</h2>
+        <div class="w-full bg-gray-100 dark:bg-white/10 h-2 rounded-full mt-4 overflow-hidden">
+          <div id="stepper-progress-bar" class="bg-[#0071E3] h-full rounded-full transition-all duration-300" style="width: 15%"></div>
+        </div>
+      </div>
+
+      <div class="space-y-3 mb-6">
+        <div id="step-row-0" class="flex items-center gap-3 text-xs font-medium text-gray-400">
+          <span class="step-indicator w-6 h-6 rounded-full flex items-center justify-center border border-gray-300 dark:border-gray-700 text-[10px]">1</span>
+          <span id="txt-stage-1">Məlumatlar oxunur</span>
+        </div>
+        <div id="step-row-1" class="flex items-center gap-3 text-xs font-medium text-gray-400">
+          <span class="step-indicator w-6 h-6 rounded-full flex items-center justify-center border border-gray-300 dark:border-gray-700 text-[10px]">2</span>
+          <span id="txt-stage-2">Xətalar və boşluqlar axtarılır</span>
+        </div>
+        <div id="step-row-2" class="flex items-center gap-3 text-xs font-medium text-gray-400">
+          <span class="step-indicator w-6 h-6 rounded-full flex items-center justify-center border border-gray-300 dark:border-gray-700 text-[10px]">3</span>
+          <span id="txt-stage-3">Sİ təmizləmə planı hazırlayır</span>
+        </div>
+        <div id="step-row-3" class="flex items-center gap-3 text-xs font-medium text-gray-400">
+          <span class="step-indicator w-6 h-6 rounded-full flex items-center justify-center border border-gray-300 dark:border-gray-700 text-[10px]">4</span>
+          <span id="txt-stage-4">Təmizləmə əməliyyatları icra olunur</span>
+        </div>
+        <div id="step-row-4" class="flex items-center gap-3 text-xs font-medium text-gray-400">
+          <span class="step-indicator w-6 h-6 rounded-full flex items-center justify-center border border-gray-300 dark:border-gray-700 text-[10px]">5</span>
+          <span id="txt-stage-5">Qrafiklər və hesabat hazırlanır</span>
+        </div>
+      </div>
+
+      <div class="flex justify-center">
+        <button onclick="cancelAnalysis()" id="txt-cancel-btn" class="px-5 py-2 rounded-full border border-black/10 dark:border-white/10 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 transition">Dayandır</button>
+      </div>
+    </section>
+
+    <section id="results-section" class="hidden mb-12 space-y-6">
+      <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 id="results-filename" class="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-white">dataset.csv</h2>
+            <span id="results-job-id" class="px-2.5 py-0.5 rounded-full text-xs font-mono bg-black/5 dark:bg-white/10 text-gray-600 dark:text-gray-300">#job</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-gray-500 font-medium">
+            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span id="txt-total-time-prefix">Ümumi vaxt:</span>
+            <span id="results-total-time" class="font-mono text-gray-900 dark:text-white">0.0 sec</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <button onclick="downloadCleanedCsv()" id="txt-download-csv-btn" class="px-6 py-2.5 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-white font-semibold text-xs sm:text-sm transition shadow-sm flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span>Təmizlənmiş CSV-ni yüklə</span>
+          </button>
+          <button onclick="resetToNewFile()" id="txt-new-file-btn" class="px-4 py-2.5 rounded-full border border-black/10 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-300 font-semibold text-xs sm:text-sm transition">Yeni fayl</button>
+        </div>
+      </div>
+
+      <div id="fallback-banner" class="hidden p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-[#FF9F0A]/30 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-3">
+        <svg class="w-4 h-4 text-[#FF9F0A] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <span id="txt-fallback-notice">Fallback rejimi aktivdir: Sİ planı əlçatan olmadığından qaydalara əsaslanan plandan istifadə edildi</span>
+      </div>
+
+      <div id="warnings-container" class="hidden p-4 rounded-2xl bg-gray-100 dark:bg-white/5 border border-black/5 dark:border-white/10 text-xs text-gray-700 dark:text-gray-300">
+        <details class="cursor-pointer">
+          <summary id="txt-warnings-title" class="font-semibold text-gray-900 dark:text-white">Xəbərdarlıqlar</summary>
+          <ul id="warnings-list" class="mt-2 space-y-1 list-disc pl-5 text-gray-600 dark:text-gray-400"></ul>
+        </details>
+      </div>
+
+      <div class="flex justify-center">
+        <div class="p-1 rounded-full bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/5 inline-flex" role="tablist" aria-label="Analysis tabs">
+          <button id="tab-btn-summary" onclick="switchTab('summary')" class="tab-btn px-4 sm:px-6 py-2 rounded-full text-xs font-semibold transition bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white shadow-sm" role="tab" aria-selected="true" aria-controls="tab-pane-summary">İcmal</button>
+          <button id="tab-btn-plan" onclick="switchTab('plan')" class="tab-btn px-4 sm:px-6 py-2 rounded-full text-xs font-semibold transition text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" role="tab" aria-selected="false" aria-controls="tab-pane-plan">Plan və Giriş</button>
+          <button id="tab-btn-charts" onclick="switchTab('charts')" class="tab-btn px-4 sm:px-6 py-2 rounded-full text-xs font-semibold transition text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" role="tab" aria-selected="false" aria-controls="tab-pane-charts">Qrafiklər</button>
+          <button id="tab-btn-data" onclick="switchTab('data')" class="tab-btn px-4 sm:px-6 py-2 rounded-full text-xs font-semibold transition text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" role="tab" aria-selected="false" aria-controls="tab-pane-data">Məlumatlar</button>
+        </div>
+      </div>
+
+      <div id="tab-pane-summary" class="tab-pane space-y-6" role="tabpanel">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-1">
+            <span id="txt-metric-rows-after" class="text-xs text-gray-500 font-medium">Yekun sətirlər</span>
+            <div id="metric-rows-after" class="text-2xl font-bold font-mono text-gray-900 dark:text-white">0</div>
+          </div>
+          <div class="p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-1">
+            <span id="txt-metric-rows-deleted" class="text-xs text-gray-500 font-medium">Silinmiş sətirlər</span>
+            <div id="metric-rows-deleted" class="text-2xl font-bold font-mono text-[#FF3B30]">0</div>
+          </div>
+          <div class="p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-1">
+            <span id="txt-metric-nulls-after" class="text-xs text-gray-500 font-medium">Boş xanalar</span>
+            <div class="flex items-baseline gap-2">
+              <span id="metric-nulls-after" class="text-2xl font-bold font-mono text-gray-900 dark:text-white">0</span>
+              <span id="metric-nulls-delta" class="text-xs font-mono"></span>
+            </div>
+          </div>
+          <div class="p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-1">
+            <span id="txt-metric-steps-ok" class="text-xs text-gray-500 font-medium">Uğurlu addımlar</span>
+            <div id="metric-steps-ok" class="text-2xl font-bold font-mono text-[#34C759]">0 / 0</div>
+          </div>
+        </div>
+
+        <div class="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm">
+          <h3 id="txt-insights-title" class="text-base font-semibold text-gray-900 dark:text-white mb-4">Analitik Nəticələr</h3>
+          <div id="insights-container" class="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed space-y-3"></div>
+        </div>
+      </div>
+
+      <div id="tab-pane-plan" class="tab-pane hidden space-y-6" role="tabpanel">
+        <div class="p-6 rounded-3xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-4">
+          <div>
+            <h3 id="txt-plan-summary-title" class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Təmizləmə Planının Xülasəsi</h3>
+            <p id="plan-summary-text" class="text-xs sm:text-sm text-gray-600 dark:text-gray-300 leading-relaxed"></p>
+          </div>
+          <div>
+            <h4 id="txt-plan-steps-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Planlaşdırılmış Addımlar</h4>
+            <div id="plan-steps-container" class="flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-3xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 id="txt-log-title" class="text-sm font-semibold text-gray-900 dark:text-white">İcra Jurnalı</h3>
+            <div class="flex items-center gap-2">
+              <select id="log-status-filter" onchange="renderLogTable()" class="px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-gray-50 dark:bg-black/40 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-[#0071E3] focus:outline-none">
+                <option value="all">Bütün statuslar</option>
+                <option value="ok">Yalnız uğurlu</option>
+                <option value="failed">Yalnız xətalı</option>
+              </select>
+              <input id="log-search-input" oninput="renderLogTable()" type="text" placeholder="Axtarış..." class="px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 bg-gray-50 dark:bg-black/40 text-gray-900 dark:text-white text-xs focus:ring-2 focus:ring-[#0071E3] focus:outline-none">
+            </div>
+          </div>
+
+          <div class="overflow-x-auto custom-scrollbar border border-black/5 dark:border-white/10 rounded-2xl">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-gray-50 dark:bg-white/5 border-b border-black/5 dark:border-white/10 text-gray-500 font-semibold">
+                <tr>
+                  <th id="th-log-step" class="px-4 py-3">Addım</th>
+                  <th id="th-log-action" class="px-4 py-3">Əməliyyat</th>
+                  <th id="th-log-target" class="px-4 py-3">Sütun</th>
+                  <th id="th-log-status" class="px-4 py-3">Status</th>
+                  <th id="th-log-rows" class="px-4 py-3">Sətirlər</th>
+                  <th id="th-log-details" class="px-4 py-3">Dəyər / Detal</th>
+                  <th id="th-log-error" class="px-4 py-3">Xəta</th>
+                </tr>
+              </thead>
+              <tbody id="log-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-pane-charts" class="tab-pane hidden" role="tabpanel">
+        <div id="charts-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-5"></div>
+      </div>
+
+      <div id="tab-pane-data" class="tab-pane hidden space-y-6" role="tabpanel">
+        <div class="p-6 rounded-3xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-4">
+          <h3 id="txt-profile-compare-title" class="text-sm font-semibold text-gray-900 dark:text-white">Məlumat Profili Müqayisəsi</h3>
+          <div class="overflow-x-auto custom-scrollbar border border-black/5 dark:border-white/10 rounded-2xl">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-gray-50 dark:bg-white/5 border-b border-black/5 dark:border-white/10 text-gray-500 font-semibold">
+                <tr>
+                  <th id="th-compare-metric" class="px-4 py-3">Göstərici</th>
+                  <th id="th-compare-before" class="px-4 py-3">Əvvəl</th>
+                  <th id="th-compare-after" class="px-4 py-3">Sonra</th>
+                  <th id="th-compare-delta" class="px-4 py-3">Fərq</th>
+                </tr>
+              </thead>
+              <tbody id="profile-compare-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-3xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-4">
+          <h3 id="txt-preview-title" class="text-sm font-semibold text-gray-900 dark:text-white">Məlumatın Əvvəlki və Sonrakı Görünüşü</h3>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="space-y-2">
+              <span id="txt-preview-before-label" class="text-xs font-medium text-gray-500">Əvvəlki hal (ilk 50 sətir)</span>
+              <div id="preview-before-box" class="h-96 overflow-auto custom-scrollbar border border-black/5 dark:border-white/10 rounded-2xl bg-gray-50/50 dark:bg-black/20"></div>
+            </div>
+            <div class="space-y-2">
+              <span id="txt-preview-after-label" class="text-xs font-medium text-gray-500">Təmizlənmiş hal (ilk 50 sətir)</span>
+              <div id="preview-after-box" class="h-96 overflow-auto custom-scrollbar border border-black/5 dark:border-white/10 rounded-2xl bg-gray-50/50 dark:bg-black/20"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-3xl bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 shadow-sm space-y-4">
+          <h3 id="txt-col-health-title" class="text-sm font-semibold text-gray-900 dark:text-white">Sütunların Sağlamlıq Diaqnostikası</h3>
+          <div class="overflow-x-auto custom-scrollbar border border-black/5 dark:border-white/10 rounded-2xl">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-gray-50 dark:bg-white/5 border-b border-black/5 dark:border-white/10 text-gray-500 font-semibold">
+                <tr>
+                  <th id="th-health-name" class="px-4 py-3">Sütun</th>
+                  <th id="th-health-type" class="px-4 py-3">Tip</th>
+                  <th id="th-health-null" class="px-4 py-3">Boş xana %</th>
+                  <th id="th-health-outliers" class="px-4 py-3">Kənar dəyərlər</th>
+                  <th id="th-health-ws" class="px-4 py-3">Boşluq xətası</th>
+                </tr>
+              </thead>
+              <tbody id="column-health-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mt-auto py-6 border-t border-black/5 dark:border-white/10 text-center text-xs text-gray-500 dark:text-gray-400">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span id="txt-footer-text">CleanVision · Təhlükəsiz və Ağıllı Məlumat Təmizləmə Platforması</span>
+      <a id="footer-docs-link" href="http://localhost:8000/docs" target="_blank" rel="noopener noreferrer" class="hover:text-[#0071E3] transition">API Sənədləri (/docs)</a>
+    </div>
+  </footer>
+
+  <script>
+    const I18N = {
+      az: {
+        serverOk: "Server aktiv",
+        serverOffline: "Server qoşulmayıb",
+        llmActive: "LLM Aktiv",
+        llmOffline: "LLM Qeyri-aktiv",
+        settingsTitle: "Tənzimləmələr",
+        backendUrlLabel: "Backend URL",
+        mockModeLabel: "Mock rejimi (test məlumatları)",
+        saveBtn: "Yadda saxla",
+        headline: "Məlumatlarınızı saniyələr içində təmizləyin və analiz edin",
+        subtitle: "Süni intellekt dəstəkli avtomatlaşdırılmış təmizləmə, keyfiyyət profili və interaktiv qrafiklər",
+        dropPrompt: "Faylı bura sürükləyin və ya seçmək üçün klikləyin",
+        dropSub: "CSV, XLSX və ya XLS dəstəklənir (Maks. 20 MB)",
+        tryDemo: "Nümunə fayl ilə yoxlayın:",
+        cleanBtn: "Məlumatı təmizlə",
+        step1Title: "1. Məlumatı yükləyin",
+        step1Desc: "Dağınıq CSV və ya Excel cədvəlinizi birbaşa brauzerdən daxil edin.",
+        step2Title: "2. Süni intellektlə təmizləyin",
+        step2Desc: "Sİ boşluqları, təkrarları, kənar qiymətləri aşkarlayır və həll edir.",
+        step3Title: "3. Nəticəni əldə edin",
+        step3Desc: "Təmizlənmiş CSV faylını yükləyin və dinamik analitika hesabatını araşdırın.",
+        stage1: "Məlumatlar oxunur",
+        stage2: "Xətalar və boşluqlar axtarılır",
+        stage3: "Sİ təmizləmə planı hazırlayır",
+        stage4: "Təmizləmə əməliyyatları icra olunur",
+        stage5: "Qrafiklər və hesabat hazırlanır",
+        cancelBtn: "Dayandır",
+        totalTimePrefix: "Ümumi vaxt:",
+        fallbackNotice: "Fallback rejimi aktivdir: Sİ planı əlçatan olmadığından qaydalara əsaslanan plandan istifadə edildi",
+        warningsTitle: "Xəbərdarlıqlar",
+        downloadBtn: "Təmizlənmiş CSV-ni yüklə",
+        newFileBtn: "Yeni fayl",
+        tabSummary: "İcmal",
+        tabPlanLog: "Plan və Giriş",
+        tabCharts: "Qrafiklər",
+        tabData: "Məlumatlar",
+        metricRowsAfter: "Yekun sətirlər",
+        metricRowsDeleted: "Silinmiş sətirlər",
+        metricNullsAfter: "Boş xanalar",
+        metricStepsOk: "Uğurlu addımlar",
+        insightsTitle: "Analitik Nəticələr",
+        planSummaryTitle: "Təmizləmə Planının Xülasəsi",
+        planStepsTitle: "Planlaşdırılmış Addımlar",
+        logTitle: "İcra Jurnalı",
+        filterAll: "Bütün statuslar",
+        filterOk: "Yalnız uğurlu",
+        filterFailed: "Yalnız xətalı",
+        searchPlaceholder: "Əməliyyat və ya sütun üzrə axtarış...",
+        thStep: "Addım",
+        thAction: "Əməliyyat",
+        thTarget: "Sütun",
+        thStatus: "Status",
+        thRows: "Sətirlər",
+        thDetails: "Dəyər / Detal",
+        thError: "Xəta",
+        statusOk: "Uğurlu",
+        statusFailed: "Xətalı",
+        profileCompareTitle: "Məlumat Profili Müqayisəsi",
+        thMetric: "Göstərici",
+        thBefore: "Əvvəl",
+        thAfter: "Sonra",
+        thDelta: "Fərq",
+        metricTotalRows: "Ümumi sətir sayı",
+        metricTotalCols: "Sütun sayı",
+        metricDupRows: "Təkrarlanan sətirlər",
+        metricTotalNulls: "Boş xanaların sayı",
+        previewTitle: "Məlumatın Əvvəlki və Sonrakı Görünüşü",
+        previewBeforeLabel: "Əvvəlki hal (ilk 50 sətir)",
+        previewAfterLabel: "Təmizlənmiş hal (ilk 50 sətir)",
+        colHealthTitle: "Sütunların Sağlamlıq Diaqnostikası",
+        thHealthName: "Sütun",
+        thHealthType: "Tip",
+        thHealthNull: "Boş xana %",
+        thHealthOutliers: "Kənar dəyərlər",
+        thHealthWs: "Boşluq xətası",
+        noCharts: "Göstərmək üçün qrafik tapılmadı",
+        errNetwork: "Server is not running. Start the backend.",
+        err400: "File format not supported.",
+        err413: "File is too large (20 MB limit).",
+        err500: "An error occurred during cleaning",
+        errDetails: "Xəta təfərrüatları",
+        footerText: "CleanVision · Təhlükəsiz və Ağıllı Məlumat Təmizləmə Platforması",
+        footerDocs: "API Sənədləri (/docs)"
+      },
+      en: {
+        serverOk: "Connected",
+        serverOffline: "Offline",
+        llmActive: "LLM Ready",
+        llmOffline: "LLM Offline",
+        settingsTitle: "Settings",
+        backendUrlLabel: "Backend URL",
+        mockModeLabel: "Mock mode (test data)",
+        saveBtn: "Save",
+        headline: "Clean and visualize your data in seconds",
+        subtitle: "AI-driven automated data cleaning, profiling, and interactive visual insights",
+        dropPrompt: "Drop your file here or click to browse",
+        dropSub: "Supports CSV, XLSX, or XLS (Max 20 MB)",
+        tryDemo: "Try a demo file:",
+        cleanBtn: "Clean data",
+        step1Title: "1. Upload File",
+        step1Desc: "Upload your raw CSV or Excel dataset right from your browser.",
+        step2Title: "2. Smart Cleaning",
+        step2Desc: "AI detects missing values, duplicate records, outliers, and formatting issues.",
+        step3Title: "3. Download Clean Data",
+        step3Desc: "Export production-ready CSV with instant analytics and interactive charts.",
+        stage1: "Reading data",
+        stage2: "Searching for issues",
+        stage3: "AI building plan",
+        stage4: "Executing cleaning",
+        stage5: "Generating charts",
+        cancelBtn: "Cancel",
+        totalTimePrefix: "Total time:",
+        fallbackNotice: "Fallback mode activated: the AI plan was unavailable, so a rule-based plan was used",
+        warningsTitle: "Warnings",
+        downloadBtn: "Download cleaned CSV",
+        newFileBtn: "New file",
+        tabSummary: "Summary",
+        tabPlanLog: "Plan & Log",
+        tabCharts: "Charts",
+        tabData: "Data",
+        metricRowsAfter: "Rows After",
+        metricRowsDeleted: "Deleted Rows",
+        metricNullsAfter: "Null Cells After",
+        metricStepsOk: "Successful Steps",
+        insightsTitle: "Analysis & Insights",
+        planSummaryTitle: "Cleaning Plan Summary",
+        planStepsTitle: "Planned Steps",
+        logTitle: "Execution Log",
+        filterAll: "All statuses",
+        filterOk: "Only OK",
+        filterFailed: "Only Failed",
+        searchPlaceholder: "Search by action or column...",
+        thStep: "Step",
+        thAction: "Action",
+        thTarget: "Column",
+        thStatus: "Status",
+        thRows: "Rows",
+        thDetails: "Fill Value / Details",
+        thError: "Error",
+        statusOk: "OK",
+        statusFailed: "Failed",
+        profileCompareTitle: "Profile Comparison",
+        thMetric: "Metric",
+        thBefore: "Before",
+        thAfter: "After",
+        thDelta: "Delta",
+        metricTotalRows: "Total Rows",
+        metricTotalCols: "Total Columns",
+        metricDupRows: "Duplicate Rows",
+        metricTotalNulls: "Total Null Cells",
+        previewTitle: "Before & After Data Preview",
+        previewBeforeLabel: "Before Cleaning (first 50 rows)",
+        previewAfterLabel: "After Cleaning (first 50 rows)",
+        colHealthTitle: "Column Health & Diagnostics",
+        thHealthName: "Column",
+        thHealthType: "Type",
+        thHealthNull: "Null %",
+        thHealthOutliers: "Outliers",
+        thHealthWs: "Whitespace",
+        noCharts: "No charts available",
+        errNetwork: "Server is not running. Start the backend.",
+        err400: "File format not supported.",
+        err413: "File is too large (20 MB limit).",
+        err500: "An error occurred during cleaning",
+        errDetails: "Error details",
+        footerText: "CleanVision · Secure and Intelligent Data Cleaning Platform",
+        footerDocs: "API Documentation (/docs)"
+      }
+    };
+
+    let currentLang = 'az';
+    let currentFile = null;
+    let selectedDemo = null;
+    let currentAnalysisData = null;
+    let currentTab = 'summary';
+    let abortController = null;
+    let stepperInterval = null;
+    let currentStageIndex = 0;
+    let healthInterval = null;
+
+    function t(key) {
+      return (I18N[currentLang] && I18N[currentLang][key]) || (I18N.en && I18N.en[key]) || key;
+    }
+
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function sanitizeHtml(rawHtml) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(rawHtml, 'text/html');
+      const disallowed = ['script', 'iframe', 'object', 'embed', 'link', 'style', 'meta', 'base', 'form', 'input', 'button'];
+      disallowed.forEach(tag => {
+        doc.querySelectorAll(tag).forEach(el => el.remove());
+      });
+      doc.querySelectorAll('*').forEach(el => {
+        Array.from(el.attributes).forEach(attr => {
+          const name = attr.name.toLowerCase();
+          const val = attr.value.toLowerCase().trim();
+          if (name.startsWith('on')) {
+            el.removeAttribute(attr.name);
+          }
+          if ((name === 'href' || name === 'src') && (val.startsWith('javascript:') || val.startsWith('data:text/html'))) {
+            el.removeAttribute(attr.name);
+          }
+        });
+      });
+      return doc.body.innerHTML;
+    }
+
+    function getBackendUrl() {
+      try {
+        return localStorage.getItem('cleanvision_backend_url') || 'http://localhost:8000';
+      } catch (e) {
+        return 'http://localhost:8000';
+      }
+    }
+
+    function isMockMode() {
+      try {
+        return localStorage.getItem('cleanvision_mock_mode') === 'true';
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function initTheme() {
+      try {
+        const savedTheme = localStorage.getItem('cleanvision_theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.classList.add('dark');
+        }
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      try {
+        localStorage.setItem('cleanvision_theme', isDark ? 'dark' : 'light');
+      } catch (e) {}
+      if (currentAnalysisData && currentTab === 'charts') {
+        renderCharts(currentAnalysisData.charts);
+      }
+    }
+
+    function initSettings() {
+      try {
+        const urlInput = document.getElementById('setting-backend-url');
+        const mockInput = document.getElementById('setting-mock-mode');
+        urlInput.value = getBackendUrl();
+        mockInput.checked = isMockMode();
+        const docsLink = document.getElementById('footer-docs-link');
+        docsLink.href = `${getBackendUrl().replace(/\/$/, '')}/docs`;
+      } catch (e) {}
+    }
+
+    function toggleSettingsPopover() {
+      const popover = document.getElementById('settings-popover');
+      popover.classList.toggle('hidden');
+    }
+
+    function saveSettings() {
+      const urlInput = document.getElementById('setting-backend-url');
+      const mockInput = document.getElementById('setting-mock-mode');
+      let url = urlInput.value.trim() || 'http://localhost:8000';
+      url = url.replace(/\/$/, '');
+      try {
+        localStorage.setItem('cleanvision_backend_url', url);
+        localStorage.setItem('cleanvision_mock_mode', mockInput.checked ? 'true' : 'false');
+      } catch (e) {}
+      document.getElementById('footer-docs-link').href = `${url}/docs`;
+      toggleSettingsPopover();
+      checkHealth();
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      try {
+        localStorage.setItem('cleanvision_lang', lang);
+      } catch (e) {}
+      document.documentElement.lang = lang;
+      const azBtn = document.getElementById('lang-btn-az');
+      const enBtn = document.getElementById('lang-btn-en');
+      if (lang === 'az') {
+        azBtn.className = "px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white shadow-sm";
+        enBtn.className = "px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white";
+        azBtn.setAttribute('aria-checked', 'true');
+        enBtn.setAttribute('aria-checked', 'false');
+      } else {
+        enBtn.className = "px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white shadow-sm";
+        azBtn.className = "px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 focus-visible:ring-2 focus-visible:ring-[#0071E3] focus-visible:outline-none text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white";
+        enBtn.setAttribute('aria-checked', 'true');
+        azBtn.setAttribute('aria-checked', 'false');
+      }
+      applyTranslations();
+      if (currentAnalysisData) {
+        populateResultsView(currentAnalysisData);
+      }
+    }
+
+    function applyTranslations() {
+      document.getElementById('txt-settings-title').textContent = t('settingsTitle');
+      document.getElementById('txt-backend-url-label').textContent = t('backendUrlLabel');
+      document.getElementById('txt-mock-mode-label').textContent = t('mockModeLabel');
+      document.getElementById('txt-save-settings-btn').textContent = t('saveBtn');
+      document.getElementById('txt-hero-headline').textContent = t('headline');
+      document.getElementById('txt-hero-subtitle').textContent = t('subtitle');
+      document.getElementById('txt-drop-prompt').textContent = t('dropPrompt');
+      document.getElementById('txt-drop-sub').textContent = t('dropSub');
+      document.getElementById('txt-try-demo').textContent = t('tryDemo');
+      document.getElementById('txt-clean-btn').textContent = t('cleanBtn');
+      document.getElementById('txt-step1-title').textContent = t('step1Title');
+      document.getElementById('txt-step1-desc').textContent = t('step1Desc');
+      document.getElementById('txt-step2-title').textContent = t('step2Title');
+      document.getElementById('txt-step2-desc').textContent = t('step2Desc');
+      document.getElementById('txt-step3-title').textContent = t('step3Title');
+      document.getElementById('txt-step3-desc').textContent = t('step3Desc');
+      document.getElementById('txt-stage-1').textContent = t('stage1');
+      document.getElementById('txt-stage-2').textContent = t('stage2');
+      document.getElementById('txt-stage-3').textContent = t('stage3');
+      document.getElementById('txt-stage-4').textContent = t('stage4');
+      document.getElementById('txt-stage-5').textContent = t('stage5');
+      document.getElementById('txt-cancel-btn').textContent = t('cancelBtn');
+      document.getElementById('txt-total-time-prefix').textContent = t('totalTimePrefix');
+      document.getElementById('txt-fallback-notice').textContent = t('fallbackNotice');
+      document.getElementById('txt-warnings-title').textContent = t('warningsTitle');
+      const dlBtnSpan = document.querySelector('#txt-download-csv-btn span');
+      if (dlBtnSpan) dlBtnSpan.textContent = t('downloadBtn');
+      document.getElementById('txt-new-file-btn').textContent = t('newFileBtn');
+      document.getElementById('tab-btn-summary').textContent = t('tabSummary');
+      document.getElementById('tab-btn-plan').textContent = t('tabPlanLog');
+      document.getElementById('tab-btn-charts').textContent = t('tabCharts');
+      document.getElementById('tab-btn-data').textContent = t('tabData');
+      document.getElementById('txt-metric-rows-after').textContent = t('metricRowsAfter');
+      document.getElementById('txt-metric-rows-deleted').textContent = t('metricRowsDeleted');
+      document.getElementById('txt-metric-nulls-after').textContent = t('metricNullsAfter');
+      document.getElementById('txt-metric-steps-ok').textContent = t('metricStepsOk');
+      document.getElementById('txt-insights-title').textContent = t('insightsTitle');
+      document.getElementById('txt-plan-summary-title').textContent = t('planSummaryTitle');
+      document.getElementById('txt-plan-steps-title').textContent = t('planStepsTitle');
+      document.getElementById('txt-log-title').textContent = t('logTitle');
+      document.getElementById('txt-error-details-summary').textContent = t('errDetails');
+
+      const filterSelect = document.getElementById('log-status-filter');
+      if (filterSelect) {
+        filterSelect.options[0].text = t('filterAll');
+        filterSelect.options[1].text = t('filterOk');
+        filterSelect.options[2].text = t('filterFailed');
+      }
+      document.getElementById('log-search-input').placeholder = t('searchPlaceholder');
+      document.getElementById('th-log-step').textContent = t('thStep');
+      document.getElementById('th-log-action').textContent = t('thAction');
+      document.getElementById('th-log-target').textContent = t('thTarget');
+      document.getElementById('th-log-status').textContent = t('thStatus');
+      document.getElementById('th-log-rows').textContent = t('thRows');
+      document.getElementById('th-log-details').textContent = t('thDetails');
+      document.getElementById('th-log-error').textContent = t('thError');
+
+      document.getElementById('txt-profile-compare-title').textContent = t('profileCompareTitle');
+      document.getElementById('th-compare-metric').textContent = t('thMetric');
+      document.getElementById('th-compare-before').textContent = t('thBefore');
+      document.getElementById('th-compare-after').textContent = t('thAfter');
+      document.getElementById('th-compare-delta').textContent = t('thDelta');
+
+      document.getElementById('txt-preview-title').textContent = t('previewTitle');
+      document.getElementById('txt-preview-before-label').textContent = t('previewBeforeLabel');
+      document.getElementById('txt-preview-after-label').textContent = t('previewAfterLabel');
+
+      document.getElementById('txt-col-health-title').textContent = t('colHealthTitle');
+      document.getElementById('th-health-name').textContent = t('thHealthName');
+      document.getElementById('th-health-type').textContent = t('thHealthType');
+      document.getElementById('th-health-null').textContent = t('thHealthNull');
+      document.getElementById('th-health-outliers').textContent = t('thHealthOutliers');
+      document.getElementById('th-health-ws').textContent = t('thHealthWs');
+
+      document.getElementById('txt-footer-text').textContent = t('footerText');
+      document.getElementById('footer-docs-link').textContent = t('footerDocs');
+    }
+
+    async function checkHealth() {
+      const baseUrl = getBackendUrl();
+      const dot = document.getElementById('backend-status-dot');
+      const text = document.getElementById('backend-status-text');
+      const llmBadge = document.getElementById('llm-status-badge');
+      const llmText = document.getElementById('llm-status-text');
+      try {
+        const response = await fetch(`${baseUrl}/health`, { method: 'GET', cache: 'no-cache' });
+        if (!response.ok) throw new Error('Status not ok');
+        const data = await response.json();
+        dot.className = "w-2 h-2 rounded-full bg-[#34C759]";
+        text.textContent = t('serverOk');
+        if (data.llm) {
+          llmBadge.className = "hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#34C759]/15 text-[#34C759] border border-[#34C759]/20";
+          llmText.textContent = t('llmActive');
+        } else {
+          llmBadge.className = "hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400 border border-black/5 dark:border-white/5";
+          llmText.textContent = t('llmOffline');
+        }
+      } catch (err) {
+        dot.className = "w-2 h-2 rounded-full bg-[#FF3B30]";
+        text.textContent = t('serverOffline');
+        llmBadge.className = "hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400 border border-black/5 dark:border-white/5";
+        llmText.textContent = t('llmOffline');
+      }
+    }
+
+    function initDropzone() {
+      const dz = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+
+      dz.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        fileInput.click();
+      });
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dz.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dz.classList.add('border-[#0071E3]', 'bg-[#0071E3]/5');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dz.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dz.classList.remove('border-[#0071E3]', 'bg-[#0071E3]/5');
+        });
+      });
+
+      dz.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+          validateAndSetFile(dt.files[0]);
+        }
+      });
+    }
+
+    function handleFileInput(event) {
+      if (event.target.files && event.target.files.length > 0) {
+        validateAndSetFile(event.target.files[0]);
+      }
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function validateAndSetFile(file) {
+      const allowed = ['.csv', '.xlsx', '.xls'];
+      const ext = '.' + file.name.split('.').pop().toLowerCase();
+      if (!allowed.includes(ext)) {
+        showError(t('err400'));
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) {
+        showError(t('err413'));
+        return;
+      }
+      dismissError();
+      currentFile = file;
+      selectedDemo = null;
+      renderSelectedFile(file.name, file.size);
+    }
+
+    function selectDemoFile(filename, size) {
+      dismissError();
+      selectedDemo = filename;
+      currentFile = null;
+      renderSelectedFile(filename + ' (Demo)', size);
+    }
+
+    function renderSelectedFile(name, size) {
+      document.getElementById('dropzone-empty-view').classList.add('hidden');
+      const fileView = document.getElementById('dropzone-file-view');
+      fileView.classList.remove('hidden');
+      document.getElementById('selected-file-name').textContent = name;
+      document.getElementById('selected-file-size').textContent = formatFileSize(size);
+      document.getElementById('clean-submit-btn').disabled = false;
+    }
+
+    function removeSelectedFile(event) {
+      if (event) event.stopPropagation();
+      currentFile = null;
+      selectedDemo = null;
+      document.getElementById('file-input').value = '';
+      document.getElementById('dropzone-file-view').classList.add('hidden');
+      document.getElementById('dropzone-empty-view').classList.remove('hidden');
+      document.getElementById('clean-submit-btn').disabled = true;
+    }
+
+    function showError(message, detail = null) {
+      const banner = document.getElementById('error-banner');
+      const msgEl = document.getElementById('error-message');
+      const detailsBox = document.getElementById('error-details-box');
+      const detailsContent = document.getElementById('error-details-content');
+      msgEl.textContent = message;
+      if (detail != null) {
+        detailsBox.classList.remove('hidden');
+        detailsContent.textContent = typeof detail === 'string' ? detail : JSON.stringify(detail, null, 2);
+      } else {
+        detailsBox.classList.add('hidden');
+        detailsContent.textContent = '';
+      }
+      banner.classList.remove('hidden');
+      banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function dismissError() {
+      document.getElementById('error-banner').classList.add('hidden');
+    }
+
+    function startStepper() {
+      currentStageIndex = 0;
+      updateStepperDisplay(0, 15);
+      stepperInterval = setInterval(() => {
+        if (currentStageIndex < 4) {
+          currentStageIndex++;
+          const progressPercent = [15, 38, 62, 85, 94][currentStageIndex];
+          updateStepperDisplay(currentStageIndex, progressPercent);
+        }
+      }, 1600);
+    }
+
+    function updateStepperDisplay(stageIdx, progressPercent) {
+      const bar = document.getElementById('stepper-progress-bar');
+      bar.style.width = progressPercent + '%';
+      const stagesLabels = [t('stage1'), t('stage2'), t('stage3'), t('stage4'), t('stage5')];
+      document.getElementById('stepper-current-label').textContent = (stagesLabels[stageIdx] || '') + '...';
+
+      for (let i = 0; i < 5; i++) {
+        const row = document.getElementById(`step-row-${i}`);
+        const indicator = row.querySelector('.step-indicator');
+        if (i < stageIdx) {
+          row.className = "flex items-center gap-3 text-xs font-medium text-[#34C759]";
+          indicator.className = "step-indicator w-6 h-6 rounded-full flex items-center justify-center bg-[#34C759] text-white text-[10px]";
+          indicator.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+        } else if (i === stageIdx) {
+          row.className = "flex items-center gap-3 text-xs font-semibold text-[#0071E3]";
+          indicator.className = "step-indicator w-6 h-6 rounded-full flex items-center justify-center bg-[#0071E3] text-white text-[10px] animate-pulse";
+          indicator.textContent = i + 1;
+        } else {
+          row.className = "flex items-center gap-3 text-xs font-medium text-gray-400";
+          indicator.className = "step-indicator w-6 h-6 rounded-full flex items-center justify-center border border-gray-300 dark:border-gray-700 text-[10px]";
+          indicator.textContent = i + 1;
+        }
+      }
+    }
+
+    function cancelAnalysis() {
+      if (abortController) {
+        abortController.abort();
+      }
+      clearInterval(stepperInterval);
+      document.getElementById('progress-section').classList.add('hidden');
+      document.getElementById('hero-section').classList.remove('hidden');
+      document.getElementById('empty-state-section').classList.remove('hidden');
+    }
+
+    async function startAnalysis() {
+      if (!currentFile && !selectedDemo) return;
+      dismissError();
+      document.getElementById('hero-section').classList.add('hidden');
+      document.getElementById('empty-state-section').classList.add('hidden');
+      document.getElementById('results-section').classList.add('hidden');
+      document.getElementById('progress-section').classList.remove('hidden');
+
+      startStepper();
+
+      abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+      }, 180000);
+
+      const baseUrl = getBackendUrl();
+      const mockFlag = Boolean(selectedDemo || isMockMode());
+      const url = `${baseUrl}/analyze?lang=${currentLang}&mock=${mockFlag}`;
+
+      const formData = new FormData();
+      if (currentFile) {
+        formData.append('file', currentFile);
+      } else if (selectedDemo) {
+        formData.append('file', new Blob([''], { type: 'text/csv' }), selectedDemo);
+      }
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          body: formData,
+          signal: abortController.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          let errorDetail = null;
+          try {
+            const errJson = await response.json();
+            errorDetail = errJson.detail || errJson;
+          } catch (e) {
+            errorDetail = await response.text();
+          }
+
+          if (response.status === 400) {
+            throw { customMsg: t('err400'), detail: errorDetail };
+          } else if (response.status === 413) {
+            throw { customMsg: t('err413'), detail: errorDetail };
+          } else if (response.status === 500) {
+            throw { customMsg: t('err500'), detail: errorDetail };
+          } else {
+            throw { customMsg: `Error (${response.status})`, detail: errorDetail };
+          }
+        }
+
+        const data = await response.json();
+        clearInterval(stepperInterval);
+        updateStepperDisplay(4, 100);
+
+        setTimeout(() => {
+          document.getElementById('progress-section').classList.add('hidden');
+          currentAnalysisData = data;
+          populateResultsView(data);
+          document.getElementById('results-section').classList.remove('hidden');
+          document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+        }, 350);
+
+      } catch (err) {
+        clearTimeout(timeoutId);
+        clearInterval(stepperInterval);
+        document.getElementById('progress-section').classList.add('hidden');
+        document.getElementById('hero-section').classList.remove('hidden');
+        document.getElementById('empty-state-section').classList.remove('hidden');
+
+        if (err.name === 'AbortError') {
+          showError("Analysis was cancelled or timed out (180 s limit).");
+        } else if (err.customMsg) {
+          showError(err.customMsg, err.detail);
+        } else {
+          showError(t('errNetwork'));
+        }
+      }
+    }
+
+    function animateCount(element, target, duration = 800) {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        element.textContent = target.toLocaleString();
+        return;
+      }
+      const start = 0;
+      const startTime = performance.now();
+      function update(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 2);
+        const current = Math.round(start + (target - start) * ease);
+        element.textContent = current.toLocaleString();
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+      requestAnimationFrame(update);
+    }
+
+    function populateResultsView(data) {
+      data = data || {};
+      const profileBefore = data.profile_before || {};
+      const profileAfter = data.profile_after || {};
+      const timings = data.timings || {};
+      const plan = data.plan || {};
+      const log = data.log || [];
+      const warnings = data.warnings || [];
+
+      document.getElementById('results-filename').textContent = data.filename || (currentFile ? currentFile.name : (selectedDemo || 'dataset.csv'));
+      document.getElementById('results-job-id').textContent = '#' + (data.job_id || 'clean');
+
+      const totalSec = timings.total != null ? timings.total : (timings.total_ms != null ? (timings.total_ms / 1000) : 0);
+      document.getElementById('results-total-time').textContent = Number(totalSec).toFixed(2) + ' sec';
+
+      const fallbackBanner = document.getElementById('fallback-banner');
+      if (data.used_fallback) {
+        fallbackBanner.classList.remove('hidden');
+      } else {
+        fallbackBanner.classList.add('hidden');
+      }
+
+      const warningsContainer = document.getElementById('warnings-container');
+      const warningsList = document.getElementById('warnings-list');
+      warningsList.innerHTML = '';
+      if (warnings && warnings.length > 0) {
+        warnings.forEach(w => {
+          const li = document.createElement('li');
+          li.textContent = w;
+          warningsList.appendChild(li);
+        });
+        warningsContainer.classList.remove('hidden');
+      } else {
+        warningsContainer.classList.add('hidden');
+      }
+
+      const rowsAfter = profileAfter.rows || 0;
+      const rowsBefore = profileBefore.rows || 0;
+      const deletedRows = Math.max(0, rowsBefore - rowsAfter);
+      const nullsBefore = profileBefore.total_null_cells || 0;
+      const nullsAfter = profileAfter.total_null_cells || 0;
+      const deltaNulls = nullsAfter - nullsBefore;
+
+      animateCount(document.getElementById('metric-rows-after'), rowsAfter);
+      animateCount(document.getElementById('metric-rows-deleted'), deletedRows);
+      animateCount(document.getElementById('metric-nulls-after'), nullsAfter);
+
+      const deltaEl = document.getElementById('metric-nulls-delta');
+      if (deltaNulls < 0) {
+        deltaEl.className = "text-xs font-mono font-semibold text-[#34C759]";
+        deltaEl.textContent = `${deltaNulls.toLocaleString()}`;
+      } else if (deltaNulls === 0) {
+        deltaEl.className = "text-xs font-mono text-gray-400";
+        deltaEl.textContent = "0";
+      } else {
+        deltaEl.className = "text-xs font-mono font-semibold text-[#FF3B30]";
+        deltaEl.textContent = `+${deltaNulls.toLocaleString()}`;
+      }
+
+      const okSteps = log.filter(l => l.status === 'ok').length;
+      document.getElementById('metric-steps-ok').textContent = `${okSteps} / ${log.length}`;
+
+      const insightsHtml = marked.parse(data.insights || 'No insights provided.');
+      document.getElementById('insights-container').innerHTML = sanitizeHtml(insightsHtml);
+
+      document.getElementById('plan-summary-text').textContent = plan.summary || 'Standard data cleansing steps applied.';
+      renderPlanSteps(plan.steps || []);
+
+      renderLogTable();
+
+      renderProfileComparison(profileBefore, profileAfter);
+
+      renderPreviewTable(data.preview_before || [], 'preview-before-box');
+      renderPreviewTable(data.preview_after || [], 'preview-after-box');
+
+      const colInfo = profileAfter.columns_info || profileBefore.columns_info || [];
+      renderColumnHealth(colInfo);
+
+      renderCharts(data.charts || []);
+    }
+
+    function renderPlanSteps(steps) {
+      const container = document.getElementById('plan-steps-container');
+      container.innerHTML = '';
+      if (!steps || steps.length === 0) {
+        container.innerHTML = '<span class="text-gray-400 text-xs">No steps defined</span>';
+        return;
+      }
+      steps.forEach((st, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-white/5 text-xs text-gray-800 dark:text-gray-200 border border-black/5 dark:border-white/5';
+        let params = [];
+        if (st.column) params.push(escapeHtml(st.column));
+        if (st.columns && Array.isArray(st.columns)) params.push(escapeHtml(st.columns.join(', ')));
+        if (st.method) params.push(`method: ${escapeHtml(st.method)}`);
+        if (st.to) params.push(`to: ${escapeHtml(st.to)}`);
+        if (st.case) params.push(`case: ${escapeHtml(st.case)}`);
+        chip.innerHTML = `
+          <span class="w-5 h-5 rounded-full bg-[#0071E3] text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">${idx + 1}</span>
+          <span class="font-medium font-mono">${escapeHtml(st.action || 'action')}</span>
+          ${params.length > 0 ? `<span class="text-gray-500 text-[11px]">(${params.join(', ')})</span>` : ''}
+        `;
+        container.appendChild(chip);
+      });
+    }
+
+    function renderLogTable() {
+      const log = (currentAnalysisData && currentAnalysisData.log) || [];
+      const filter = document.getElementById('log-status-filter').value;
+      const search = (document.getElementById('log-search-input').value || '').toLowerCase().trim();
+      const tbody = document.getElementById('log-table-body');
+      tbody.innerHTML = '';
+
+      const filtered = log.filter(item => {
+        if (filter !== 'all' && item.status !== filter) return false;
+        if (search) {
+          const a = (item.action || '').toLowerCase();
+          const c = (item.column || '').toLowerCase();
+          const e = (item.error || '').toLowerCase();
+          const v = String(item.fill_value || '').toLowerCase();
+          if (!a.includes(search) && !c.includes(search) && !e.includes(search) && !v.includes(search)) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-400 text-xs">No entries match criteria</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const tr = document.createElement('tr');
+        const isFailed = item.status === 'failed';
+        tr.className = `border-b border-black/5 dark:border-white/5 text-xs transition-colors ${isFailed ? 'bg-[#FF3B30]/5 dark:bg-[#FF3B30]/15 border-l-4 border-[#FF3B30]' : 'hover:bg-gray-50/80 dark:hover:bg-white/5'}`;
+
+        let rowsText = '—';
+        if (item.rows_before != null && item.rows_after != null) {
+          const diff = item.rows_after - item.rows_before;
+          rowsText = `${item.rows_before} → ${item.rows_after} (${diff >= 0 ? '+' : ''}${diff})`;
+        }
+
+        const fillValText = item.fill_value != null ? escapeHtml(String(item.fill_value)) : '—';
+        const errText = item.error ? `<span class="text-[#FF3B30] font-mono font-medium">${escapeHtml(item.error)}</span>` : '—';
+
+        tr.innerHTML = `
+          <td class="px-4 py-3 font-semibold text-gray-500">${item.step ?? '—'}</td>
+          <td class="px-4 py-3 font-mono font-semibold text-gray-900 dark:text-gray-100">${escapeHtml(item.action || '—')}</td>
+          <td class="px-4 py-3 text-gray-600 dark:text-gray-300 font-mono">${escapeHtml(item.column || '—')}</td>
+          <td class="px-4 py-3">
+            ${isFailed ? `
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FF9F0A]/15 text-[#FF9F0A] dark:text-[#FFB340]">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                ${t('statusFailed')}
+              </span>
+            ` : `
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#34C759]/15 text-[#34C759]">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                ${t('statusOk')}
+              </span>
+            `}
+          </td>
+          <td class="px-4 py-3 text-gray-600 dark:text-gray-300 font-mono">${rowsText}</td>
+          <td class="px-4 py-3 text-gray-600 dark:text-gray-300 font-mono">${fillValText}</td>
+          <td class="px-4 py-3">${errText}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderCharts(charts) {
+      const container = document.getElementById('charts-grid');
+      container.innerHTML = '';
+      if (!charts || charts.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-12 text-gray-400 text-xs">${t('noCharts')}</div>`;
+        return;
+      }
+      const isDark = document.documentElement.classList.contains('dark');
+      const textColor = isDark ? '#F5F5F7' : '#1C1C1E';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+
+      charts.forEach((ch, idx) => {
+        const card = document.createElement('div');
+        card.className = 'bg-white dark:bg-[#1C1C1E] border border-black/5 dark:border-white/10 rounded-3xl p-5 shadow-sm flex flex-col';
+
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between mb-3 px-1';
+        header.innerHTML = `
+          <h4 class="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">${escapeHtml(ch.title || 'Chart')}</h4>
+          <span class="text-[10px] uppercase tracking-wider font-mono text-gray-400 bg-gray-100 dark:bg-white/5 px-2 py-0.5 rounded-full">${escapeHtml(ch.kind || 'plot')}</span>
+        `;
+        card.appendChild(header);
+
+        const plotDiv = document.createElement('div');
+        const plotId = `plotly-card-chart-${idx}`;
+        plotDiv.id = plotId;
+        plotDiv.className = 'w-full h-80 min-h-[320px]';
+        card.appendChild(plotDiv);
+        container.appendChild(card);
+
+        try {
+          let fig = typeof ch.figure_json === 'string' ? JSON.parse(ch.figure_json) : (ch.figure_json || {});
+          fig.layout = fig.layout || {};
+          fig.layout.paper_bgcolor = 'transparent';
+          fig.layout.plot_bgcolor = 'transparent';
+          fig.layout.font = fig.layout.font || {};
+          fig.layout.font.color = textColor;
+          fig.layout.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui';
+          fig.layout.margin = fig.layout.margin || { l: 45, r: 20, t: 25, b: 45 };
+          fig.layout.autosize = true;
+          if (fig.layout.xaxis) {
+            fig.layout.xaxis.gridcolor = gridColor;
+            fig.layout.xaxis.zerolinecolor = gridColor;
+            fig.layout.xaxis.color = textColor;
+          }
+          if (fig.layout.yaxis) {
+            fig.layout.yaxis.gridcolor = gridColor;
+            fig.layout.yaxis.zerolinecolor = gridColor;
+            fig.layout.yaxis.color = textColor;
+          }
+          Plotly.newPlot(plotId, fig.data || [], fig.layout, { responsive: true, displaylogo: false });
+        } catch (e) {
+          plotDiv.innerHTML = `<div class="flex items-center justify-center h-full text-red-400 text-xs">Error rendering chart</div>`;
+        }
+      });
+    }
+
+    function renderProfileComparison(before, after) {
+      const tbody = document.getElementById('profile-compare-tbody');
+      tbody.innerHTML = '';
+      before = before || {};
+      after = after || {};
+
+      const metrics = [
+        { key: 'rows', label: t('metricTotalRows'), lowerBetter: false },
+        { key: 'columns', label: t('metricTotalCols'), lowerBetter: false },
+        { key: 'duplicate_rows', label: t('metricDupRows'), lowerBetter: true },
+        { key: 'total_null_cells', label: t('metricTotalNulls'), lowerBetter: true }
+      ];
+
+      metrics.forEach(m => {
+        const b = before[m.key] ?? 0;
+        const a = after[m.key] ?? 0;
+        const diff = a - b;
+        let diffClass = 'text-gray-500';
+        let diffStr = '0';
+        if (diff !== 0) {
+          if (m.lowerBetter) {
+            diffClass = diff < 0 ? 'text-[#34C759] font-semibold' : 'text-[#FF3B30] font-semibold';
+          } else {
+            diffClass = 'text-gray-700 dark:text-gray-300 font-semibold';
+          }
+          diffStr = `${diff > 0 ? '+' : ''}${diff.toLocaleString()}`;
+        }
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-black/5 dark:border-white/5 text-xs';
+        tr.innerHTML = `
+          <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">${m.label}</td>
+          <td class="px-4 py-3 font-mono text-gray-600 dark:text-gray-400">${b.toLocaleString()}</td>
+          <td class="px-4 py-3 font-mono text-gray-900 dark:text-white font-semibold">${a.toLocaleString()}</td>
+          <td class="px-4 py-3 font-mono ${diffClass}">${diffStr}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderPreviewTable(rows, containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      if (!rows || rows.length === 0) {
+        container.innerHTML = `<div class="flex items-center justify-center h-full text-gray-400 text-xs">No preview data</div>`;
+        return;
+      }
+      const cols = Object.keys(rows[0]);
+      const table = document.createElement('table');
+      table.className = 'w-full text-left border-collapse text-xs';
+
+      const thead = document.createElement('thead');
+      thead.className = 'sticky top-0 bg-gray-100/95 dark:bg-[#2C2C2E]/95 backdrop-blur z-10 border-b border-black/5 dark:border-white/10';
+      thead.innerHTML = `<tr>${cols.map(c => `<th class="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">${escapeHtml(c)}</th>`).join('')}</tr>`;
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-black/5 dark:border-white/5 hover:bg-gray-100/50 dark:hover:bg-white/5';
+        tr.innerHTML = cols.map(c => {
+          const val = r[c];
+          const valFormatted = val == null ? '<span class="text-gray-400 italic">null</span>' : escapeHtml(String(val));
+          return `<td class="px-3 py-1.5 text-gray-700 dark:text-gray-300 font-mono whitespace-nowrap max-w-xs truncate">${valFormatted}</td>`;
+        }).join('');
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      container.appendChild(table);
+    }
+
+    function renderColumnHealth(columnsInfo) {
+      const tbody = document.getElementById('column-health-tbody');
+      tbody.innerHTML = '';
+      if (!columnsInfo || columnsInfo.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-400 text-xs">No column metrics available</td></tr>`;
+        return;
+      }
+      columnsInfo.forEach(col => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-black/5 dark:border-white/5 text-xs hover:bg-gray-50/60 dark:hover:bg-white/5';
+        const nullPct = Number(col.null_pct || 0);
+        const hasWs = Boolean(col.whitespace_issues);
+
+        tr.innerHTML = `
+          <td class="px-4 py-3 font-semibold font-mono text-gray-900 dark:text-white">${escapeHtml(col.name || '—')}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-mono bg-blue-50 dark:bg-blue-950/40 text-[#0071E3] font-medium">
+              ${escapeHtml(col.inferred_type || col.dtype || 'any')}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <div class="flex items-center gap-2">
+              <div class="w-20 bg-gray-200 dark:bg-white/10 rounded-full h-1.5 overflow-hidden">
+                <div class="bg-[#0071E3] h-full rounded-full" style="width: ${Math.min(100, Math.max(0, nullPct))}%"></div>
+              </div>
+              <span class="text-gray-600 dark:text-gray-400 font-mono text-[11px]">${nullPct.toFixed(1)}%</span>
+            </div>
+          </td>
+          <td class="px-4 py-3 font-mono text-gray-700 dark:text-gray-300">
+            ${col.outlier_count > 0 ? `<span class="px-2 py-0.5 rounded-full text-[11px] bg-orange-50 dark:bg-orange-950/40 text-[#FF9F0A] font-semibold">${col.outlier_count}</span>` : '0'}
+          </td>
+          <td class="px-4 py-3">
+            ${hasWs ? `
+              <span class="inline-flex items-center gap-1 text-[11px] text-[#FF9F0A] font-medium">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                Yes
+              </span>
+            ` : `
+              <span class="inline-flex items-center gap-1 text-[11px] text-[#34C759]">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Clean
+              </span>
+            `}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function switchTab(tabId) {
+      currentTab = tabId;
+      const tabs = ['summary', 'plan', 'charts', 'data'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const pane = document.getElementById(`tab-pane-${t}`);
+        if (t === tabId) {
+          btn.className = "tab-btn px-4 sm:px-6 py-2 rounded-full text-xs font-semibold transition bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white shadow-sm";
+          btn.setAttribute('aria-selected', 'true');
+          pane.classList.remove('hidden');
+        } else {
+          btn.className = "tab-btn px-4 sm:px-6 py-2 rounded-full text-xs font-semibold transition text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white";
+          btn.setAttribute('aria-selected', 'false');
+          pane.classList.add('hidden');
+        }
+      });
+
+      if (tabId === 'charts' && currentAnalysisData && currentAnalysisData.charts) {
+        currentAnalysisData.charts.forEach((_, idx) => {
+          const plotEl = document.getElementById(`plotly-card-chart-${idx}`);
+          if (plotEl) Plotly.Plots.resize(plotEl);
+        });
+      }
+    }
+
+    async function downloadCleanedCsv() {
+      if (!currentAnalysisData || !currentAnalysisData.download_url) return;
+      const baseUrl = getBackendUrl();
+      let fullUrl = currentAnalysisData.download_url;
+      if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+        fullUrl = `${baseUrl}${fullUrl.startsWith('/') ? '' : '/'}${fullUrl}`;
+      }
+
+      const original = currentAnalysisData.filename || (currentFile ? currentFile.name : (selectedDemo || 'dataset.csv'));
+      const stem = original.replace(/\.[^/.]+$/, '') || 'dataset';
+      const saveName = `cleaned_${stem}.csv`;
+
+      try {
+        const res = await fetch(fullUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = saveName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } catch (err) {
+        showError(t('errNetwork') + ' (' + err.message + ')');
+      }
+    }
+
+    function resetToNewFile() {
+      currentAnalysisData = null;
+      removeSelectedFile();
+      document.getElementById('results-section').classList.add('hidden');
+      document.getElementById('progress-section').classList.add('hidden');
+      document.getElementById('hero-section').classList.remove('hidden');
+      document.getElementById('empty-state-section').classList.remove('hidden');
+      switchTab('summary');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    window.addEventListener('resize', () => {
+      if (currentTab === 'charts' && currentAnalysisData && currentAnalysisData.charts) {
+        currentAnalysisData.charts.forEach((_, idx) => {
+          const plotEl = document.getElementById(`plotly-card-chart-${idx}`);
+          if (plotEl) Plotly.Plots.resize(plotEl);
+        });
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initSettings();
+      try {
+        const savedLang = localStorage.getItem('cleanvision_lang') || 'az';
+        setLanguage(savedLang);
+      } catch (e) {
+        setLanguage('az');
+      }
+      initDropzone();
+      checkHealth();
+      healthInterval = setInterval(checkHealth, 10000);
+    });
+  </script>
+</body>
+</html>
