@@ -36,7 +36,6 @@ def _restore_dtype(series, dtype):
 
 
 def normalize_pseudo_nulls(series):
-    """Convert pseudo-null strings into actual missing values."""
     if _is_plain(series):
         return series
 
@@ -63,7 +62,6 @@ def normalize_pseudo_nulls(series):
 
 
 def resolve_column(df, name):
-    """Resolve column names ignoring case and outer spaces."""
     if not isinstance(name, str):
         raise KeyError(f"Column not found: {name}")
 
@@ -184,8 +182,6 @@ def _standardize_text(df, step):
         transforms[case],
     )
 
-    # Optional explicit value mapping.
-    # Example: {"Baku ": "Baku", "Sumqayit": "Sumgayit"}
     mapping = step.get("mapping", {})
 
     if mapping:
@@ -386,7 +382,6 @@ def _error_text(exc):
 
 
 def execute_plan(df, plan):
-    """Execute cleaning steps on a copy of the input DataFrame."""
     if isinstance(df, pd.DataFrame):
         work = df.copy(deep=True)
     else:

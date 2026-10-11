@@ -700,7 +700,12 @@
 
     function getBackendUrl() {
       try {
-        return localStorage.getItem('cleanvision_backend_url') || 'http://localhost:8000';
+        const saved = localStorage.getItem('cleanvision_backend_url');
+        if (saved && saved.trim()) return saved.trim();
+        if (window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:')) {
+          return window.location.origin;
+        }
+        return 'http://localhost:8000';
       } catch (e) {
         return 'http://localhost:8000';
       }

@@ -1,6 +1,8 @@
 import json
 import re
+import threading
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -13,11 +15,14 @@ from backend import pipeline
 from backend.schemas import AnalyzeResponse
 
 try:
-    from backend.agent.llm_client import llm_available
+    from backend.agent.llm_client import llm_available, warm_up
 except Exception:
 
     def llm_available():
         return False
+
+    def warm_up():
+        pass
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,7 +32,22 @@ ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls"}
 MAX_BYTES = 20 * 1024 * 1024
 JOB_ID_PATTERN = re.compile(r"^[0-9a-f]{8}$")
 
-app = FastAPI(title="CleanVision API")
+
+def _warmup_background():
+    try:
+        if llm_available():
+            warm_up()
+    except Exception:
+        pass
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    threading.Thread(target=_warmup_background, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="CleanVision API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,8 +77,22 @@ def builtin_mock(filename):
             ],
         },
         "log": [
-            {"step": 1, "action": "drop_duplicates", "affected": 6, "status": "ok", "rows_before": 120, "rows_after": 114},
-            {"step": 2, "action": "fill_nulls", "column": "price", "affected": 18, "status": "ok", "fill_value": 42.5},
+            {
+                "step": 1,
+                "action": "drop_duplicates",
+                "affected": 6,
+                "status": "ok",
+                "rows_before": 120,
+                "rows_after": 114,
+            },
+            {
+                "step": 2,
+                "action": "fill_nulls",
+                "column": "price",
+                "affected": 18,
+                "status": "ok",
+                "fill_value": 42.5,
+            },
         ],
         "profile_after": {
             "rows": 114,
@@ -118,14 +152,14 @@ async def analyze(
         return response
 
     if file is None or not file.filename:
-        raise HTTPException(status_code=400, detail="No file was uploaded.")
+        raise HTTPException(status_code=400, detail="File format not supported.")
 
     filename = Path(file.filename).name
     extension = Path(filename).suffix.lower()
     if extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file type. Allowed types: csv, xlsx, xls.",
+            detail="File format not supported.",
         )
 
     try:
@@ -134,7 +168,7 @@ async def analyze(
         raise HTTPException(status_code=400, detail=f"Could not read the uploaded file: {exc}")
 
     if len(file_bytes) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail="File is too large. The limit is 20 MB.")
+        raise HTTPException(status_code=413, detail="File is too large (20 MB limit).")
     if len(file_bytes) == 0:
         raise HTTPException(status_code=400, detail="The uploaded file is empty.")
 
@@ -177,3 +211,11 @@ def download(job_id: str):
         media_type="text/csv",
         filename=f"cleaned_{Path(original).stem}.csv",
     )
+
+
+@app.get("/", include_in_schema=False)
+def serve_index():
+    index_file = ROOT / "frontend" / "index.html"
+    if index_file.is_file():
+        return FileResponse(index_file)
+    raise HTTPException(status_code=404, detail="Frontend index.html not found.")
