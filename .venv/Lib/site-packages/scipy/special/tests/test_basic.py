@@ -37,7 +37,6 @@ from scipy.special import ellipe, ellipk, ellipkm1
 from scipy.special import elliprc, elliprd, elliprf, elliprg, elliprj
 from scipy.special import softplus
 from scipy.special import mathieu_odd_coef, mathieu_even_coef, stirling2
-from scipy._lib._util import np_long, np_ulong
 from scipy._lib._array_api import xp_assert_close, xp_assert_equal, SCIPY_ARRAY_API
 
 from scipy.special._basic import (
@@ -152,9 +151,6 @@ class TestCephes:
 
     def test_bdtrc(self):
         assert_equal(cephes.bdtrc(1,3,0.5),0.5)
-
-    def test_bdtrin(self):
-        assert_equal(cephes.bdtrin(1,0,1),5.0)
 
     def test_bdtrik(self):
         cephes.bdtrik(1,3,0.5)
@@ -702,9 +698,6 @@ class TestCephes:
     def test_nbdtrik(self):
         cephes.nbdtrik(1,.4,.5)
 
-    def test_nbdtrin(self):
-        assert_equal(cephes.nbdtrin(1,0,0),5.0)
-
     def test_ncfdtr(self):
         assert_equal(cephes.ncfdtr(1,1,1,0),0.0)
 
@@ -770,10 +763,6 @@ class TestCephes:
 
     def test_nrdtrimn(self):
         assert_allclose(cephes.nrdtrimn(0.5, 1, 1), 1.0, atol=1e-6, rtol=0)
-
-    def test_nrdtrisd(self):
-        assert_allclose(cephes.nrdtrisd(0.5,0.5,0.5), 0.0,
-                         atol=0, rtol=0)
 
     def test_obl_ang1(self):
         cephes.obl_ang1(1,1,1,0)
@@ -2335,7 +2324,7 @@ class TestFactorialFunctions:
         "n",
         [
             np.nan, np.float64("nan"), np.nan + np.nan*1j, np.complex128("nan+nanj"),
-            np.inf, np.inf + 0j, -np.inf, -np.inf + 0j, None, np.datetime64("nat")
+            np.inf, np.inf + 0j, -np.inf, -np.inf + 0j, None, np.datetime64("nat", "s")
         ],
         ids=[
             "NaN", "np.float64('nan')", "NaN+i*NaN", "np.complex128('nan+nanj')",
@@ -2489,7 +2478,7 @@ class TestFactorialFunctions:
             if exact:
                 # avoid attempting huge calculation
                 pass
-            elif np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+            else:
                 # N does not fit into int64 --> cannot use _check
                 _check_inf(dtype(N-1))
                 _check_inf(np.array(N-1, dtype=dtype))
@@ -2954,7 +2943,7 @@ class TestFactorialFunctions:
     @pytest.mark.parametrize("exact,extend",
                              [(True, "zero"), (False, "zero"), (False, "complex")])
     # neither integer, float nor complex
-    @pytest.mark.parametrize("k", ["string", np.datetime64("nat")],
+    @pytest.mark.parametrize("k", ["string", np.datetime64("nat", "s")],
                              ids=["string", "NaT"])
     def test_factorialk_raises_k_other(self, k, exact, extend, boxed):
         n = [1] if boxed else 1
@@ -2969,7 +2958,7 @@ class TestFactorialFunctions:
         kw = {"k": k, "exact": exact, "extend": extend}
         if exact and k in _FACTORIALK_LIMITS_64BITS.keys():
             n = np.array([_FACTORIALK_LIMITS_32BITS[k]])
-            assert_equal(special.factorialk(n, **kw).dtype, np_long)
+            assert_equal(special.factorialk(n, **kw).dtype, np.long)
             assert_equal(special.factorialk(n + 1, **kw).dtype, np.int64)
             # assert maximality of limits for given dtype
             assert special.factorialk(n + 1, **kw) > np.iinfo(np.int32).max
@@ -3992,6 +3981,17 @@ class TestBessel:
         x = special.ivp(1,2)
         assert_allclose(x, y, atol=1.5e-10, rtol=0)
 
+    @pytest.mark.parametrize("x, expected",
+        [(1e15, 6.156638646885021e-09),  # 1/sqrt(eps) < x < 1/eps
+         (1e30, -5.589003016686147e-16)  # x > 1/eps
+        ])
+    def test_gh22705(self, x, expected):
+        # reference values computed with mpmath
+        # from mpmath import mp
+        # mp.dps = 1000
+        # float(mp.besselj(0, mp.mpf('1e15')))
+        assert_allclose(special.j0(x), expected, rtol=5e-15)
+
 
 class TestLaguerre:
     def test_laguerre(self):
@@ -4836,8 +4836,8 @@ class TestStirling2:
     def test_numpy_array_unsigned_int_dtype(self, is_exact, comp, kwargs):
         # numpy unsigned integers are allowed as dtype in numpy arrays
         ans = asarray(self.table[4][1:])
-        n = asarray([4, 4, 4, 4], dtype=np_ulong)
-        k = asarray([1, 2, 3, 4], dtype=np_ulong)
+        n = asarray([4, 4, 4, 4], dtype=np.ulong)
+        k = asarray([1, 2, 3, 4], dtype=np.ulong)
         comp(stirling2(n, k, exact=False), ans, **kwargs)
 
     @pytest.mark.parametrize("is_exact, comp, kwargs", [

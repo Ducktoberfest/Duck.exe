@@ -71,6 +71,7 @@ TEXTS = {
         "steps": "Addımlar: {ok} uğurlu, {failed} uğursuz",
         "bullet": "{label} ({column}): {affected} təsirlənib",
         "bullet_nocol": "{label}: {affected} təsirlənib",
+        "bullet_convert": "{label} ({column}): {affected} dəyər oxunmadı və boş qaldı",
         "fill": ", doldurma dəyəri {value}",
         "no_steps": "Təmizləmə addımı qeyd olunmayıb",
         "more": "və daha {count} addım",
@@ -100,6 +101,7 @@ TEXTS = {
         "steps": "Steps: {ok} succeeded, {failed} failed",
         "bullet": "{label} ({column}): {affected} affected",
         "bullet_nocol": "{label}: {affected} affected",
+        "bullet_convert": "{label} ({column}): {affected} values could not be read and became empty",
         "fill": ", fill value {value}",
         "no_steps": "No cleaning steps were recorded",
         "more": "and {count} more steps",
@@ -188,7 +190,10 @@ def _names_by_type(profile, kind):
 def _as_dates(series):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        parsed = pd.to_datetime(series, errors="coerce", utc=True)
+        try:
+            parsed = pd.to_datetime(series, errors="coerce", utc=True, format="mixed")
+        except (TypeError, ValueError):
+            parsed = pd.to_datetime(series, errors="coerce", utc=True)
     return parsed.dt.tz_localize(None)
 
 
@@ -204,7 +209,11 @@ def _pick_date_column(df, hints):
     return None
 
 
+PREFERRED_VALUE_NAMES = ("revenue", "sales", "amount", "total")
+
+
 def _pick_value_column(df, date_col, skip):
+    candidates = []
     for col in df.columns:
         if col == date_col or str(col) in skip:
             continue
@@ -212,8 +221,12 @@ def _pick_value_column(df, date_col, skip):
         if pd.api.types.is_bool_dtype(series) or not pd.api.types.is_numeric_dtype(series):
             continue
         if series.nunique(dropna=True) > 1:
-            return col
-    return None
+            candidates.append(col)
+    for keyword in PREFERRED_VALUE_NAMES:
+        for col in candidates:
+            if keyword in str(col).lower():
+                return col
+    return candidates[0] if candidates else None
 
 
 def monthly_growth(df, skip=(), date_hints=()):
@@ -479,7 +492,7 @@ def _pick(parsed, name):
 
 def _llm_sections(prompt_facts, all_facts, lang):
     numbered = "\n".join("%d. %s" % (index + 1, fact) for index, fact in enumerate(prompt_facts))
-    raw = ask_llm(_system_prompt(lang), "FACTS:\n" + numbered + "\nOUTPUT:", True, 0.1)
+    raw = ask_llm(_system_prompt(lang), "FACTS:\n" + numbered + "\nOUTPUT:", True, 0.1, 40)
     if not isinstance(raw, str) or not raw.strip():
         return None, "bos cavab"
     parsed = extract_json(raw)
@@ -525,7 +538,9 @@ def _template_parts(data, lang):
     shown = [step for step in data["steps"] if step["affected"] > 0]
     for step in shown[:MAX_BULLETS]:
         label = t["actions"].get(step["action"], step["action"])
-        if step["column"]:
+        if step["action"] == "convert_type" and step["column"]:
+            line = t["bullet_convert"].format(label=label, column=step["column"], affected=step["affected"])
+        elif step["column"]:
             line = t["bullet"].format(label=label, column=step["column"], affected=step["affected"])
         else:
             line = t["bullet_nocol"].format(label=label, affected=step["affected"])

@@ -17,6 +17,7 @@ dtypes = ['float32', 'float64', 'int32', 'int64', 'complex64', 'complex128']
 integral_dtypes = ['int32', 'int64']
 
 
+@pytest.mark.uses_xp_capabilities(False, reason="private")
 def test_wrap_radians(xp):
     x = xp.asarray([-math.pi-1, -math.pi, -1, -1e-300,
                     0, 1e-300, 1, math.pi, math.pi+1])
@@ -254,7 +255,7 @@ class TestLogSumExp:
         xp_assert_close(xp.imag(res), xp.imag(ref), atol=0, rtol=1e-15)
 
 
-    @pytest.mark.parametrize('x,y', it.product(
+    @pytest.mark.parametrize('x,y', list(it.product(
         [
             -np.inf,
             np.inf,
@@ -276,7 +277,7 @@ class TestLogSumExp:
             complex(np.inf, 3.9270),
             complex(np.inf, 5.4978),
         ], repeat=2)
-    )
+    ))
     def test_gh22601_infinite_elements(self, x, y, xp):
         # Test that `logsumexp` does reasonable things in the presence of
         # real and complex infinities.

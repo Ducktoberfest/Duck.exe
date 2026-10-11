@@ -31,7 +31,7 @@ DECISION RULES
 4. One standardize_text step with case "title" listing every categorical column you do not drop. Never use it on text, numeric or datetime columns.
 5. duplicate_rows greater than 0: add drop_duplicates. Otherwise do not add it.
 6. Only numeric columns can have remove_outliers, mean or median. For a numeric column with outlier_count greater than 0 add remove_outliers with method "clip_iqr".
-7. null_pct greater than 0: numeric uses fill_nulls median. categorical and boolean use fill_nulls mode. datetime uses fill_nulls ffill. text uses fill_nulls constant with value "unknown".
+7. null_pct greater than 0: numeric uses fill_nulls median. categorical and boolean use fill_nulls mode. datetime uses fill_nulls ffill. text uses fill_nulls constant with value "Bilinmir".
 8. Columns that need nothing get no step.
 
 EXAMPLE 1
@@ -44,5 +44,5 @@ EXAMPLE 2
 INPUT PROFILE:
 {"rows": 80, "columns": 3, "duplicate_rows": 0, "columns_info": [{"name": "status", "dtype": "object", "inferred_type": "categorical", "null_pct": 0.0, "unique": 3, "sample_values": ["Open", "closed", "OPEN", "Closed"], "outlier_count": 0}, {"name": "comment", "dtype": "object", "inferred_type": "text", "null_pct": 20.0, "unique": 55, "sample_values": ["call back", "ok", "nan", "late"], "outlier_count": 0}, {"name": "amount", "dtype": "float64", "inferred_type": "numeric", "null_pct": 0.0, "unique": 70, "sample_values": ["10.5", "20.0", "15.25", "8.0"], "outlier_count": 0}]}
 OUTPUT:
-{"summary": "Trim text, title-case status, fill empty comments.", "steps": [{"action": "strip_whitespace", "columns": ["status", "comment"]}, {"action": "standardize_text", "columns": ["status"], "case": "title"}, {"action": "fill_nulls", "column": "comment", "method": "constant", "value": "unknown"}]}
+{"summary": "Trim text, title-case status, fill empty comments.", "steps": [{"action": "strip_whitespace", "columns": ["status", "comment"]}, {"action": "standardize_text", "columns": ["status"], "case": "title"}, {"action": "fill_nulls", "column": "comment", "method": "constant", "value": "Bilinmir"}]}
 """

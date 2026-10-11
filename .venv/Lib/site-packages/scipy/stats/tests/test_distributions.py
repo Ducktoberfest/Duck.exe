@@ -1255,6 +1255,32 @@ class TestNormInvGauss:
         vals = stats.norminvgauss.ppf(x_test, a, b)
         assert_allclose(x_test, stats.norminvgauss.cdf(vals, a, b))
 
+    @pytest.mark.parametrize('a', [0.1, 1.0, 10.0])
+    @pytest.mark.parametrize('b_a', [-0.9, -0.5, -0.1, 0.1, 0.5, 0.9])
+    def test_gh23196_tails_cdf_sf(self, a, b_a):
+        # gh-23196 reported that the norminvgauss CDF would drop to zero in the far
+        # right tail. The SF had a similar problem, dropping to zero at the far left.
+        # Check that this is resolved by checking that values in the deep tails are
+        # close to 1.0.
+        b = b_a * a
+        res = stats.norminvgauss(a=a, b=b).cdf(300)
+        np.testing.assert_allclose(res, 1, atol=1e-2)
+        res = stats.norminvgauss(a=a, b=b).sf(-300)
+        np.testing.assert_allclose(res, 1, atol=1e-2)
+
+    @pytest.mark.parametrize("x, a, b, ref", [
+        (100, 1.0, 0.0, 1.0),  # originally reported in gh-23196
+        (1500, 0.1, 0.09, 0.9999999999418577),  # suggested in gh-24567
+    ])
+    def test_gh23196_tails_cdf_sf_accuracy(self, x, a, b, ref):
+        # Spot check the accuracy of the CDF/SF in the deep tails.
+        # library(GeneralizedHyperbolic)
+        # options(digits=16)
+        # pnig(1500, alpha=0.1, beta=0.09)
+        rtol = 1e-14
+        np.testing.assert_allclose(stats.norminvgauss(a=a, b=b).cdf(x), ref, rtol=rtol)
+        np.testing.assert_allclose(stats.norminvgauss(a=a, b=-b).sf(-x), ref, rtol=rtol)
+
 
 class TestGeom:
     def setup_method(self):
@@ -1679,6 +1705,55 @@ class TestHalfgennorm:
         pdf1 = stats.halfgennorm.pdf(points, .497324)
         pdf2 = stats.gennorm.pdf(points, .497324)
         assert_almost_equal(pdf1, 2*pdf2)
+
+    # Reference values (e.g. for n=3, beta=1.25)
+    #    from mpmath import mp
+    #    mp.dps = 100
+    #    n = 3
+    #    beta = mp.mpf(1.25)
+    #    ref = float(mp.rf(1/beta, n/beta))
+    @pytest.mark.parametrize('n, beta, ref',
+                             [(0, 2.25, 1),
+                              (1, 0.5, 6.0),
+                              (2, 12.5, 0.3155489903298712),
+                              (3, 0.125, 1.631515605987683e+30)])
+    def test_munp(self, n, beta, ref):
+        munp = stats.halfgennorm._munp(n, beta)
+        assert_allclose(munp, ref, rtol=5e-15)
+
+    # Reference values (e.g. for beta=0.02)
+    #    from mpmath import mp
+    #    mp.dps = 100
+    #    beta = mp.mpf(0.02)
+    #    ref = float(mp.rf(1/beta, 1/beta))
+    @pytest.mark.parametrize('beta, ref',
+                             [(0.02, 1.5342593781274747e+93),
+                              (0.125, 259459200.0),
+                              (0.5, 6.0),
+                              (10.0, 0.48256057149575027),
+                              (125.0, 0.49777435261046765),
+                              (15000.0, 0.49998076533051666)])
+    def test_mean(self, beta, ref):
+        m = stats.halfgennorm.mean(beta)
+        assert_allclose(m, ref, rtol=1e-14)
+
+    # Reference values (e.g. for beta=0.02)
+    #    from mpmath import mp
+    #    mp.dps = 100
+    #    beta = mp.mpf(0.02)
+    #    mu = mp.rf(1/beta, 1/beta)
+    #    # var = E(X**2) - E(X)**2:
+    #    ref = float(mp.rf(1/beta, 2/beta) - mu**2)
+    @pytest.mark.parametrize('beta, ref',
+                             [(0.02, 6.261772482175519e+197),
+                              (0.125, 5.062049324107776e+18),
+                              (0.5, 84.0),
+                              (10.0, 0.08159018176717249),
+                              (125.0, 0.0826270885971827),
+                              (15000.0, 0.08332692433644018)])
+    def test_var(self, beta, ref):
+        v = stats.halfgennorm.var(beta)
+        assert_allclose(v, ref, rtol=1.5e-14)
 
 
 class TestLaplaceasymmetric:
@@ -4644,6 +4719,16 @@ class TestExponNorm:
         else:
             assert_allclose(p, expected, rtol=5e-13)
 
+    @pytest.mark.parametrize('K', [1e-9, 1e-12, 1e-15])
+    def test_extremely_small_K(self, K):
+        # see gh-issue 24551
+        # test whether distribution approaches standard normal for K -> 0
+        x = np.array([-10.5, -3.0, -1.0, 1.0, 3.0, 10.5])
+        dist = stats.exponnorm(K)
+        dist_norm = stats.norm()
+        assert_allclose(dist.logpdf(x), dist_norm.logpdf(x))
+        assert_allclose(dist.cdf(x), dist_norm.cdf(x))
+        assert_allclose(dist.sf(x), dist_norm.sf(x)) 
 
 class TestGenExpon:
     def test_pdf_unity_area(self):
@@ -6400,6 +6485,26 @@ class TestLevyStable:
             frozen_b = frozen.rvs(size=10, random_state=rng(329823498))
             assert_equal(frozen_b, unfrozen_b)
 
+    @pytest.mark.parametrize(
+        "param, alpha, beta, xs, expected",
+        [
+            (0, 1.6, 1, [-15, -14, -13], [-187.1444263, -157.1411663, -130.3526688]),
+            (1, 1.6, 1, [-15, -14, -13], [-165.0203129, -137.3671717, -112.8223545]),
+            (0, 1.4, -1, [13, 14, 15], [-367.1943293, -464.7049565, -579.4399286]),
+            (1, 1.4, -1, [13, 14, 15], [-258.1216497, -334.6139857, -426.0724094]),
+        ],
+    )
+    @pytest.mark.xfail_on_32bit("`bisect` fails to recognize valid bracket")
+    def test_logpdf_tail(self, param, alpha, beta, xs, expected):
+        # gh-20636
+        # Expected values computed from Mathematica. Mathematica command is:
+        # Log[PDF[StableDistribution[0, 1.6, 1, 0, 1], -15.0]] // InputForm
+        # Test levy_stable.logpdf accuracy in the tails when beta=1 or beta=-1
+        # for both S0/S1 parameterizations.
+        # Testing logpdf instead of pdf as more compact.
+        stats.levy_stable.parameterization = f"S{param}"
+        logpdfs = stats.levy_stable(alpha=alpha, beta=beta).logpdf(xs)
+        assert_allclose(logpdfs, expected, rtol=1e-5)
 
 class TestArrayArgument:  # test for ticket:992
     def setup_method(self):
@@ -8467,7 +8572,23 @@ class TestTukeyLambda:
         expected = [0, 2.11029702221450250, 0, -0.02708377353223019456]
         assert_almost_equal(mv, expected, decimal=10)
 
+    @pytest.mark.xfail(reason="Precision in tail hasn't been fixed in xsf")
+    def test_large_argument_ticket_21370(self):
+        # Check that survival function goes to 0 as x gets large
+        x = [1e4, 1e6, 1e8, 1e10, 1e12, 1e24]
+        lam = -0.5
+        sf = stats.tukeylambda.sf(x, lam)
+        # Check that the sf is 0 for large x
+        assert sf[-1] == 0.0
+        # Check that the sf is always decreasing except when it is 0
+        assert_array_less(np.diff(sf[sf > 0]), 0)
 
+        cdf = stats.tukeylambda.cdf(x, lam)
+        assert cdf[-1] == 1.0
+        # Check that the cdf is always increasing except when it saturates 
+        # to 1.0
+        assert np.all(np.diff(cdf[cdf < 1]) > 0)
+        
 class TestLevy:
 
     def test_levy_cdf_ppf(self):
@@ -8758,6 +8879,8 @@ def test_ksone_fit_freeze():
             stats.ksone.fit(d)
 
 
+@pytest.mark.xfail(platform.machine() == "sparc64",
+    reason="complex special functions known to fail on sparc64 (gh-22577)")
 def test_norm_logcdf():
     # Test precision of the logcdf of the normal distribution.
     # This precision was enhanced in ticket 1614.

@@ -25,6 +25,7 @@ from scipy import special
 from scipy.stats import chisquare, cramervonmises
 from scipy.stats._distr_params import distdiscrete, distcont
 from scipy._lib._util import check_random_state
+from scipy._lib._gcutils import assert_deallocated
 
 
 # common test data: this data can be shared between all the tests.
@@ -52,12 +53,7 @@ all_methods = [
     ("SimpleRatioUniforms", {"dist": StandardNormal(), "mode": 0})
 ]
 
-if (sys.implementation.name == 'pypy'
-        and sys.implementation.version < (7, 3, 10)):
-    # changed in PyPy for v7.3.10
-    floaterr = r"unsupported operand type for float\(\): 'list'"
-else:
-    floaterr = r"must be real number, not list"
+floaterr = r"must be real number, not list"
 # Make sure an internal error occurs in UNU.RAN when invalid callbacks are
 # passed. Moreover, different generators throw different error messages.
 # So, in case of an `UNURANError`, we do not validate the error message.
@@ -296,6 +292,17 @@ def test_with_scipy_distribution():
     check_discr_samples(rng, pv, dist.stats())
 
 
+def test_NumericalInverseHermite_refcycle():
+    # test if NumericalInverseHermite contains a reference cycle
+    dist = stats.norm()
+    urng = np.random.default_rng(0)
+    with assert_deallocated(NumericalInverseHermite, dist, random_state=urng) as rng:
+        u = np.linspace(0, 1, num=100)
+        check_cont_samples(rng, dist, dist.stats())
+        assert_allclose(dist.ppf(u), rng.ppf(u))
+        del rng
+
+
 def check_cont_samples(rng, dist, mv_ex, rtol=1e-7, atol=1e-1):
     rvs = rng.rvs(100000)
     mv = rvs.mean(), rvs.var()
@@ -504,7 +511,7 @@ class TestTransformedDensityRejection:
     mvs = [mv0, mv1, mv2, mv3]
 
     @pytest.mark.parametrize("dist, mv_ex",
-                             zip(dists, mvs))
+                             list(zip(dists, mvs)))
     @pytest.mark.thread_unsafe(reason="deadlocks for unknown reasons")
     def test_basic(self, dist, mv_ex):
         with warnings.catch_warnings():
@@ -814,7 +821,7 @@ class TestNumericalInversePolynomial:
 
     @pytest.mark.thread_unsafe(reason="deadlocks for unknown reasons")
     @pytest.mark.parametrize("dist, mv_ex",
-                             zip(dists, mvs))
+                             list(zip(dists, mvs)))
     def test_basic(self, dist, mv_ex):
         rng = NumericalInversePolynomial(dist, random_state=42)
         check_cont_samples(rng, dist, mv_ex)
@@ -1065,7 +1072,7 @@ class TestNumericalInverseHermite:
     mvs = [mv0, mv1]
 
     @pytest.mark.parametrize("dist, mv_ex",
-                             zip(dists, mvs))
+                             list(zip(dists, mvs)))
     @pytest.mark.parametrize("order", [3, 5])
     @pytest.mark.thread_unsafe
     def test_basic(self, dist, mv_ex, order):
@@ -1357,7 +1364,7 @@ class TestSimpleRatioUniforms:
     mvs = [mv1, mv2]
 
     @pytest.mark.parametrize("dist, mv_ex",
-                             zip(dists, mvs))
+                             list(zip(dists, mvs)))
     @pytest.mark.thread_unsafe
     def test_basic(self, dist, mv_ex):
         rng = SimpleRatioUniforms(dist, mode=dist.mode, random_state=42)
