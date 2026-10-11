@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 fastapi
 uvicorn
 python-multipart
@@ -11,9 +10,4 @@ plotly
 openpyxl
 scipy
 pydantic
-=======
-
->>>>>>> origin/main
-plotly
-openpyxl
 pytest
