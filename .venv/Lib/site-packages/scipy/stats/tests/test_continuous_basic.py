@@ -1,5 +1,6 @@
 import sys
 import warnings
+import platform
 
 import numpy as np
 import numpy.testing as npt
@@ -60,7 +61,7 @@ xfail_fit_mle = {'ksone', 'kstwo', 'truncpareto', 'irwinhall'}
 skip_fit_mle = {'levy_stable', 'studentized_range'}  # far too slow (>10min)
 slow_fit_mm = {'chi2', 'expon', 'lognorm', 'loguniform', 'powerlaw', 'reciprocal'}
 xslow_fit_mm = {'argus', 'beta', 'exponpow', 'gausshyper', 'gengamma',
-                'genhalflogistic', 'geninvgauss', 'gompertz', 'halfgennorm',
+                'genhalflogistic', 'geninvgauss', 'gompertz',
                 'johnsonsb', 'kstwobign', 'ncx2', 'norminvgauss', 'trapezoid',
                 'truncnorm', 'truncweibull_min', 'wrapcauchy'}
 xfail_fit_mm = {'alpha', 'betaprime', 'bradford', 'burr', 'burr12', 'cauchy',
@@ -121,7 +122,7 @@ def cases_test_cont_basic():
             yield distname, arg
 
 
-@pytest.mark.parametrize('distname,arg', cases_test_cont_basic())
+@pytest.mark.parametrize('distname,arg', list(cases_test_cont_basic()))
 @pytest.mark.parametrize('sn', [500])
 def test_cont_basic(distname, arg, sn, num_parallel_threads):
     try:
@@ -205,7 +206,8 @@ def test_cont_basic(distname, arg, sn, num_parallel_threads):
     check_meth_dtype(distfn, arg, meths)
     check_ppf_dtype(distfn, arg)
 
-    if distname not in fails_cmplx:
+    # complex special functions known to fail on sparc64 (gh-22577)
+    if distname not in fails_cmplx and platform.machine() != 'sparc64':
         check_cmplx_deriv(distfn, arg)
 
     if distname != 'truncnorm':
@@ -258,7 +260,7 @@ def test_cont_basic_fit_cases():
 
 
 @pytest.mark.parametrize('distname, arg, method, fix_args',
-                         cases_test_cont_basic_fit())
+                         list(cases_test_cont_basic_fit()))
 @pytest.mark.parametrize('n_fit_samples', [200])
 def test_cont_basic_fit(distname, arg, n_fit_samples, method, fix_args):
     try:
@@ -273,7 +275,7 @@ def test_cont_basic_fit(distname, arg, n_fit_samples, method, fix_args):
     else:
         check_fit_args(distfn, arg, rvs, method)
 
-@pytest.mark.parametrize('distname,arg', cases_test_cont_basic())
+@pytest.mark.parametrize('distname,arg', list(cases_test_cont_basic()))
 def test_rvs_scalar(distname, arg):
     # rvs should return a scalar when given scalar arguments (gh-12428)
     try:
@@ -335,7 +337,7 @@ def cases_test_moments():
 @pytest.mark.slow
 @pytest.mark.parametrize('distname,arg,normalization_ok,higher_ok,moment_ok,'
                          'is_xfailing',
-                         cases_test_moments())
+                         list(cases_test_moments()))
 def test_moments(distname, arg, normalization_ok, higher_ok, moment_ok,
                  is_xfailing):
     try:
@@ -828,7 +830,7 @@ def cases_test_methods_with_lists():
 
 @pytest.mark.parametrize('method', ['pdf', 'logpdf', 'cdf', 'logcdf',
                                     'sf', 'logsf', 'ppf', 'isf'])
-@pytest.mark.parametrize('distname, args', cases_test_methods_with_lists())
+@pytest.mark.parametrize('distname, args', list(cases_test_methods_with_lists()))
 def test_methods_with_lists(method, distname, args):
     # Test that the continuous distributions can accept Python lists
     # as arguments.

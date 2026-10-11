@@ -166,6 +166,9 @@ def _check_step(raw, names, lookup, id_names, types, seen, dropped):
             return None
         kind = types.get(name)
         if kind is not None:
+            if action == "convert_type" and params.get("to") in ("numeric", "datetime") and kind != params["to"]:
+                dropped.append({"step": raw, "reason": "convert_type yalnız uyğun tipli sütuna aiddir"})
+                return None
             if action == "remove_outliers" and kind != "numeric":
                 dropped.append({"step": raw, "reason": "remove_outliers yalnız rəqəmli sütuna aiddir"})
                 return None
