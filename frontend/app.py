@@ -9,6 +9,242 @@ import streamlit as st
 
 st.set_page_config(page_title="CleanVision", page_icon="🦆", layout="wide")
 
+SAAS_STYLE = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Base: Inter font, zinc background ─────────────────────────────────── */
+html, body, [class*="css"], .stApp {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    background-color: #fafafa !important;
+    color: #09090b !important;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout Container ───────────────────────────────────────────────────── */
+.block-container {
+    padding-top: 2rem !important;
+    padding-bottom: 4rem !important;
+    max-width: 1120px !important;
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+h1 {
+    font-size: 1.875rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+    color: #09090b !important;
+    line-height: 1.2 !important;
+    margin-bottom: 0.3rem !important;
+}
+h2 {
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.015em !important;
+    color: #18181b !important;
+    margin-top: 1.5rem !important;
+    margin-bottom: 0.75rem !important;
+}
+h3 {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: #18181b !important;
+}
+p, span, label, div {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+section[data-testid="stSidebar"], div[data-testid="stSidebar"] {
+    background-color: #ffffff !important;
+    border-right: 1px solid rgba(228, 228, 231, 0.8) !important;
+}
+[data-testid="stSidebar"] label {
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    color: #71717a !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* ── Metric Cards ───────────────────────────────────────────────────────── */
+div[data-testid="stMetric"], [data-testid="stMetric"] {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(228, 228, 231, 0.8) !important;
+    border-radius: 12px !important;
+    padding: 1.25rem 1.25rem 1rem !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+    transition: box-shadow 0.15s ease, transform 0.15s ease !important;
+}
+div[data-testid="stMetric"]:hover, [data-testid="stMetric"]:hover {
+    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08) !important;
+    transform: translateY(-1px);
+}
+div[data-testid="stMetricLabel"] p, [data-testid="stMetricLabel"] p {
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    color: #71717a !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem !important;
+}
+div[data-testid="stMetricValue"], [data-testid="stMetricValue"] {
+    font-size: 1.875rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+    color: #09090b !important;
+    line-height: 1.15 !important;
+}
+div[data-testid="stMetricDelta"], [data-testid="stMetricDelta"] {
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    margin-top: 0.25rem !important;
+}
+
+/* ── Tabs: shadcn-style pill navigation bar ─────────────────────────────── */
+div[data-testid="stTabs"] {
+    font-family: 'Inter', sans-serif !important;
+}
+div[data-testid="stTabs"] [data-baseweb="tab-list"],
+[data-testid="stTabs"] div[role="tablist"] {
+    background-color: #f4f4f5 !important;
+    border: 1px solid rgba(228, 228, 231, 0.8) !important;
+    border-radius: 10px !important;
+    padding: 3px !important;
+    gap: 2px !important;
+    border-bottom: none !important;
+    width: fit-content !important;
+    max-width: 100% !important;
+    margin-bottom: 1.5rem !important;
+}
+div[data-testid="stTabs"] [data-baseweb="tab"],
+[data-testid="stTabs"] button[role="tab"] {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 6px 14px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #71717a !important;
+    transition: all 0.15s ease !important;
+    white-space: nowrap !important;
+}
+div[data-testid="stTabs"] [aria-selected="true"],
+[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    background-color: #ffffff !important;
+    color: #09090b !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.06) !important;
+}
+div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+div[data-testid="stTabs"] [data-baseweb="tab-border"] {
+    display: none !important;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+button[data-testid="baseButton-primary"],
+.stButton > button[kind="primary"],
+.stDownloadButton > button[kind="primary"] {
+    background-color: #18181b !important;
+    color: #fafafa !important;
+    border: 1px solid #18181b !important;
+    border-radius: 8px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    padding: 0.5rem 1.25rem !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.15s ease !important;
+    letter-spacing: -0.005em !important;
+}
+button[data-testid="baseButton-primary"]:hover,
+.stButton > button[kind="primary"]:hover,
+.stDownloadButton > button[kind="primary"]:hover {
+    background-color: #27272a !important;
+    border-color: #27272a !important;
+    box-shadow: 0 2px 6px 0 rgba(0, 0, 0, 0.12) !important;
+    transform: translateY(-1px);
+}
+button[data-testid="baseButton-secondary"],
+.stButton > button:not([kind="primary"]) {
+    background-color: #ffffff !important;
+    color: #18181b !important;
+    border: 1px solid rgba(228, 228, 231, 0.8) !important;
+    border-radius: 8px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    padding: 0.5rem 1.25rem !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+    transition: all 0.15s ease !important;
+}
+button[data-testid="baseButton-secondary"]:hover,
+.stButton > button:not([kind="primary"]):hover {
+    background-color: #f4f4f5 !important;
+    border-color: #d4d4d8 !important;
+}
+
+/* ── DataFrames & Tables ────────────────────────────────────────────────── */
+div[data-testid="stDataFrame"], [data-testid="stDataFrame"] {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(228, 228, 231, 0.8) !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ── Expanders ──────────────────────────────────────────────────────────── */
+div[data-testid="stExpander"], [data-testid="stExpander"] {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(228, 228, 231, 0.8) !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ── Alert / Info / Warning Boxes ──────────────────────────────────────── */
+div[data-testid="stAlert"], [data-testid="stAlert"] {
+    border-radius: 10px !important;
+    border: 1px solid rgba(228, 228, 231, 0.8) !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+    font-size: 0.875rem !important;
+}
+
+/* ── Status / Processing Widget ─────────────────────────────────────────── */
+div[data-testid="stStatusWidget"], [data-testid="stStatusWidget"] {
+    background-color: #ffffff !important;
+    border: 1px solid rgba(228, 228, 231, 0.8) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ── File Uploader ──────────────────────────────────────────────────────── */
+[data-testid="stFileUploader"] {
+    border: 1px dashed rgba(161, 161, 170, 0.6) !important;
+    border-radius: 10px !important;
+    background-color: #fafafa !important;
+    transition: border-color 0.15s ease !important;
+}
+[data-testid="stFileUploader"]:hover {
+    border-color: #a1a1aa !important;
+    background-color: #f4f4f5 !important;
+}
+
+/* ── Caption / Muted text ───────────────────────────────────────────────── */
+.stCaptionContainer, small, .caption {
+    font-size: 0.8125rem !important;
+    color: #71717a !important;
+}
+
+/* ── Divider ────────────────────────────────────────────────────────────── */
+hr {
+    border-color: rgba(228, 228, 231, 0.8) !important;
+    margin: 1.5rem 0 !important;
+}
+</style>
+"""
+
+st.markdown(SAAS_STYLE, unsafe_allow_html=True)
+
+
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_PATH = ROOT / "fixtures" / "sample_response.json"
 SAMPLE_DIR = ROOT / "sample_data"
@@ -142,7 +378,9 @@ TEXTS = {
         "job": "İş",
         "file": "Fayl",
     },
-     EXTRA_TEXTS = {
+}
+
+EXTRA_TEXTS = {
     "en": {
         "err_connection": "Server is not running. Start the backend.",
         "err_400": "File format not supported.",
@@ -193,7 +431,6 @@ TEXTS = {
 
 for _code in TEXTS:
     TEXTS[_code].update(EXTRA_TEXTS[_code])
-}
 
 
 def to_int(value):
@@ -632,6 +869,40 @@ def render_data(t, data):
         show_dataframe(preview_frame(preview_after))
 
 def render_result(t, data):
+    warnings = data.get("warnings") or []
+    if warnings:
+        with st.expander(t["warnings"], expanded=False):
+            for w in warnings:
+                st.warning(w)
+
+    seconds = total_seconds(data.get("timings"))
+    if seconds is not None:
+        st.caption(t["total_time"].format(seconds=f"{seconds:.2f}"))
+
+    download_bytes = st.session_state.get("download_bytes")
+    if download_bytes:
+        file_name = data.get("filename") or "cleaned_data.csv"
+        clean_name = f"cleaned_{file_name}" if not file_name.startswith("cleaned_") else file_name
+        st.download_button(
+            t["download"],
+            data=download_bytes,
+            file_name=clean_name,
+            mime="text/csv",
+            type="primary",
+        )
+
+    tab_summary, tab_plan, tab_charts, tab_data = st.tabs(
+        [t["tab_summary"], t["tab_plan"], t["tab_charts"], t["tab_data"]]
+    )
+    with tab_summary:
+        render_summary(t, data)
+    with tab_plan:
+        render_plan_and_log(t, data)
+    with tab_charts:
+        render_charts(t, data)
+    with tab_data:
+        render_data(t, data)
+
 
 def render_results(t):
     data = st.session_state.get("result")

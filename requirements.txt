@@ -8,4 +8,7 @@ fastapi
 uvicorn
 python-multipart
 streamlit
+scipy
+pydantic
 pytest
+
